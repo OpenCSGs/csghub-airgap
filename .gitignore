@@ -1,0 +1,11 @@
+# IntelliJ project files
+.idea
+*.iml
+out
+gen
+**/.DS_Store
+**/csghub-airgap
+**/cli
+**/main
+**/csghub-airgap-*
+**/test*
