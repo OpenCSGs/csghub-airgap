@@ -26,22 +26,8 @@ func Install(spec *spec.K3sSpec) error {
 		return err
 	}
 
-	script := filepath.Join(spec.K3sScriptDir(), "k3s-install.sh")
+	installCmd := spec.K3sInstallCmd()
 
-	var envStr string
-	for _, env := range spec.InstallEnvs {
-		envStr += env + " "
-	}
-
-	var argStr string
-	for _, arg := range spec.InstallArgs {
-		argStr += arg + " "
-	}
-
-	installCmd := fmt.Sprintf("%s %s %s", envStr, script, argStr)
-
-	fmt.Printf("Installing K3s %s\n", installCmd)
-	return nil
 	if err := utils.ExecCommand("/bin/bash", "-c", installCmd); err != nil {
 		return err
 	}
@@ -51,10 +37,10 @@ func Install(spec *spec.K3sSpec) error {
 
 func setDefaultRoute() error {
 	cmdStr := `
-ip link add dummy0 type dummy &&
+ip link show dummy0 >/dev/null 2>&1 || (ip link add dummy0 type dummy &&
 ip link set dummy0 up &&
 ip addr add 203.0.113.254/31 dev dummy0 &&
-ip route add default via 203.0.113.255 dev dummy0 metric 1000
+ip route add default via 203.0.113.255 dev dummy0 metric 1000)
 `
 
 	_ = utils.ExecCommand("bash", "-c", cmdStr)

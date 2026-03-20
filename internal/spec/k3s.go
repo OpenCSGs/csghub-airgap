@@ -112,3 +112,19 @@ func (ks *K3sSpec) K3sImageFilePath() string {
 func (ks *K3sSpec) K3sScriptDir() string {
 	return filepath.Join(ks.K3sDir(), "scripts")
 }
+
+func (ks *K3sSpec) K3sInstallCmd() string {
+	script := filepath.Join(ks.K3sScriptDir(), "k3s-install.sh")
+
+	var envStr string
+	for _, env := range ks.InstallEnvs {
+		envStr += env + " "
+	}
+
+	var argStr string
+	for _, arg := range ks.InstallArgs {
+		argStr += arg + " "
+	}
+
+	return fmt.Sprintf("%s %s %s", envStr, script, argStr)
+}
