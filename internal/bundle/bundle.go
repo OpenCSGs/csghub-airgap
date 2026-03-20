@@ -8,10 +8,8 @@ import (
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
 	"csghub-airgap/internal/utils"
-	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"sigs.k8s.io/yaml"
 )
@@ -33,15 +31,8 @@ func NewFromSpec(bs *spec.BundleSpec) *Spec {
 }
 
 func (s *Spec) Create() error {
-	if runtime.GOOS != "linux" {
-		return fmt.Errorf("unsupported platform")
-	}
-
-	switch runtime.GOARCH {
-	case "amd64", "arm64":
-		// supported
-	default:
-		return fmt.Errorf("unsupported architecture: %s", runtime.GOARCH)
+	if err := checkArch(); err != nil {
+		return err
 	}
 
 	if !s.SkipK3s {
@@ -97,10 +88,14 @@ func (s *Spec) Create() error {
 }
 
 func (s *Spec) Deploy() error {
-	log.Info("deploy csghub...")
-
-	if err := k3s.Install(s.K3s); err != nil {
+	if err := checkArch(); err != nil {
 		return err
+	}
+
+	if !s.SkipK3s {
+		if err := k3s.Install(s.K3s); err != nil {
+			return err
+		}
 	}
 
 	return nil
