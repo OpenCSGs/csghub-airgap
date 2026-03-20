@@ -32,6 +32,10 @@ func Install(spec *spec.K3sSpec) error {
 		return err
 	}
 
+	if err := utils.CopyFile("/etc/rancher/k3s/k3s.yaml", "/root/.kube/config"); err != nil {
+		return err
+	}
+
 	return nil
 }
 
