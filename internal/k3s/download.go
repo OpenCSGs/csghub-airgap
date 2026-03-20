@@ -56,7 +56,7 @@ func downloadHelm(spec *spec.K3sSpec) error {
 	)
 
 	// Save path
-	savePath := filepath.Clean(filepath.Join(spec.K3sDir(), "bin", fileName))
+	savePath := filepath.Clean(filepath.Join(spec.K3sBinDir(), fileName))
 
 	// Download
 	if err := utils.DownloadFile(downloadURL, savePath); err != nil {
@@ -69,9 +69,9 @@ func downloadHelm(spec *spec.K3sSpec) error {
 // downloadBinary Fetches the K3s binary executable from official release
 func downloadBinary(spec *spec.K3sSpec) error {
 	// Construct download URL for K3s binary
-	downloadURL, _ := url.JoinPath(spec.ReleaseURL, "download", spec.Version, "k3s")
+	downloadURL, _ := url.JoinPath(spec.K3sDownLoadURL(), "k3s")
 	// Clean path to prevent directory traversal vulnerabilities
-	savePath := filepath.Clean(filepath.Join(spec.K3sDir(), "bin", "k3s"))
+	savePath := spec.K3sBinFilePath()
 
 	// Download file using utility function
 	if err := utils.DownloadFile(downloadURL, savePath); err != nil {
@@ -89,11 +89,11 @@ func downloadBinary(spec *spec.K3sSpec) error {
 // downloadImages Fetches the K3s airgap image archive for offline deployment
 func downloadImages(spec *spec.K3sSpec) error {
 	// Construct image archive filename
-	imgFileName := fmt.Sprintf("k3s-airgap-images-%s.tar.zst", spec.Arch)
+	imgFileName := spec.K3sImageFileName()
 	// Construct full download URL
-	downloadURL, _ := url.JoinPath(spec.ReleaseURL, "download", spec.Version, imgFileName)
+	downloadURL, _ := url.JoinPath(spec.K3sDownLoadURL(), imgFileName)
 	// Clean and construct save path
-	savePath := filepath.Clean(filepath.Join(spec.K3sDir(), "images", imgFileName))
+	savePath := spec.K3sImageFilePath()
 
 	// Download file using utility function
 	if err := utils.DownloadFile(downloadURL, savePath); err != nil {
@@ -106,7 +106,7 @@ func downloadImages(spec *spec.K3sSpec) error {
 // downloadInstallScript Fetches the official K3s installation script
 func downloadInstallScript(spec *spec.K3sSpec) error {
 	// Clean and construct save path for installation script
-	savePath := filepath.Clean(filepath.Join(spec.DestDir, "k3s", "scripts", "k3s-install.sh"))
+	savePath := filepath.Clean(filepath.Join(spec.K3sScriptDir(), "k3s-install.sh"))
 
 	// Download script using utility function
 	if err := utils.DownloadFile(spec.ScriptURL, savePath); err != nil {
@@ -124,7 +124,7 @@ func downloadInstallScript(spec *spec.K3sSpec) error {
 // downloadPatchScript Fetches the CoreDNS patch script
 func downloadPatchScript(spec *spec.K3sSpec) error {
 	// Clean and construct save path for installation script
-	savePath := filepath.Clean(filepath.Join(spec.K3sDir(), "scripts", "k3s-coredns-patch.sh"))
+	savePath := filepath.Clean(filepath.Join(spec.K3sScriptDir(), "k3s-coredns-patch.sh"))
 
 	downloadURL := "https://charts.opencsg.com/repository/scripts/coredns-custom-patch.sh"
 	// Download script using utility function

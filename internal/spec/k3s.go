@@ -4,6 +4,8 @@ import (
 	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/utils"
 	"fmt"
+	"log"
+	"net/url"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -51,7 +53,40 @@ func (ks *K3sSpec) Validate() error {
 	return nil
 }
 
+func (ks *K3sSpec) K3sDownLoadURL() string {
+	downloadURL, err := url.JoinPath(ks.ReleaseURL, "download", ks.Version)
+	if err != nil {
+		log.Fatalf("failed to generate k3s download URL %s", err)
+	}
+
+	return downloadURL
+}
+
 // K3sDir return K3s Offline path
 func (ks *K3sSpec) K3sDir() string {
 	return filepath.Join(ks.DestDir, "k3s")
+}
+
+func (ks *K3sSpec) K3sBinDir() string {
+	return filepath.Join(ks.K3sDir(), "bin")
+}
+
+func (ks *K3sSpec) K3sBinFilePath() string {
+	return filepath.Join(ks.K3sDir(), "bin", "k3s")
+}
+
+func (ks *K3sSpec) K3sImageDir() string {
+	return filepath.Join(ks.K3sDir(), "images")
+}
+
+func (ks *K3sSpec) K3sImageFileName() string {
+	return fmt.Sprintf("k3s-airgap-images-%s.tar.zst", ks.Arch)
+}
+
+func (ks *K3sSpec) K3sImageFilePath() string {
+	return filepath.Join(ks.K3sImageDir(), ks.K3sImageFileName())
+}
+
+func (ks *K3sSpec) K3sScriptDir() string {
+	return filepath.Join(ks.K3sDir(), "scripts")
 }
