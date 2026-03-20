@@ -13,7 +13,7 @@ import (
 )
 
 type K3sSpec struct {
-	ReleaseURL   string `yaml:"release_url" default:"https://github.com/k3s-io/k3s/releases"`
+	ReleaseURL   string `yaml:"release_url" default:"https://ghfast.top/https://github.com/k3s-io/k3s/releases"`
 	ScriptURL    string `yaml:"script_url" default:"https://get.k3s.io"`
 	Version      string `yaml:"version" default:"v1.34.5+k3s1"`
 	Arch         string `yaml:"arch"`
