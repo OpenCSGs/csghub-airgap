@@ -7,6 +7,10 @@ import (
 	"csghub-airgap/internal/k3s"
 	"csghub-airgap/internal/spec"
 	"csghub-airgap/internal/utils"
+	"os"
+	"path/filepath"
+
+	"sigs.k8s.io/yaml"
 )
 
 type Spec spec.BundleSpec
@@ -69,6 +73,30 @@ func (s *Spec) Create() error {
 		if err = image.Export(imageSpec); err != nil {
 			return err
 		}
+	}
+
+	if err := s.Manifest(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Spec) Manifest() error {
+	outDir := utils.NVL(s.DestDir, config.DefaultDestDir)
+	if err := os.MkdirAll(outDir, 0755); err != nil {
+		return err
+	}
+
+	manifestFile := filepath.Join(outDir, "manifest.yaml")
+
+	data, err := yaml.Marshal(s)
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(manifestFile, data, 0644); err != nil {
+		return err
 	}
 
 	return nil
