@@ -22,6 +22,10 @@ func LoadFromManifest(destDir string, bs *spec.BundleSpec) (*Spec, error) {
 		bundleSpec.K3s = bs.K3s
 	}
 
+	if !bundleSpec.SkipK3s {
+		bundleSpec.SkipK3s = bs.SkipK3s
+	}
+
 	if bs.Csghub != nil {
 		bundleSpec.Csghub = bs.Csghub
 	}
@@ -30,8 +34,16 @@ func LoadFromManifest(destDir string, bs *spec.BundleSpec) (*Spec, error) {
 		bundleSpec.Longhorn = bs.Longhorn
 	}
 
+	if !bundleSpec.SkipLonghorn {
+		bundleSpec.SkipLonghorn = bs.SkipLonghorn
+	}
+
 	if bs.Nvdp != nil {
 		bundleSpec.Nvdp = bs.Nvdp
+	}
+
+	if !bundleSpec.SkipNvdp {
+		bundleSpec.SkipNvdp = bs.SkipNvdp
 	}
 
 	if bs.DestDir != "" {

@@ -164,6 +164,14 @@ func WithK3sArgs(args []string) BundleSpecOption {
 		if bs.K3s == nil {
 			bs.K3s = NewK3sSpec(bs.DestDir)
 		}
+
+		if !bs.SkipNvdp {
+			bs.K3s.InstallArgs = append(
+				bs.K3s.InstallArgs,
+				"--default-runtime=nvidia",
+			)
+		}
+
 		bs.K3s.InstallArgs = append(bs.K3s.InstallArgs, args...)
 	}
 }

@@ -221,7 +221,7 @@ func deployCommand() *cli.Command {
 				Name:    "skip-nvdp",
 				Aliases: []string{"sn"},
 				Usage:   "Skip nvdp offline",
-				Value:   false,
+				Value:   true,
 			},
 
 			// ===== All Charts =====
