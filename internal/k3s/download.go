@@ -47,16 +47,17 @@ func DownloadK3S(spec *spec.K3sSpec) error {
 // downloadHelm Downloads Helm binary for offline usage
 func downloadHelm(spec *spec.K3sSpec) error {
 	// Helm release package name (example: helm-v3.14.0-linux-amd64.tar.gz)
-	fileName := fmt.Sprintf("helm-%s-%s-%s.tar.gz", spec.HelmVersion, spec.OS, spec.Arch)
+	helmFilePath := spec.K3sHelmFilePath()
+	helmFileName := filepath.Base(helmFilePath)
 
 	// Download URL
 	downloadURL, _ := url.JoinPath(
 		spec.HelmURL,
-		fileName,
+		helmFileName,
 	)
 
 	// Save path
-	savePath := filepath.Clean(filepath.Join(spec.K3sBinDir(), fileName))
+	savePath := filepath.Clean(helmFilePath)
 
 	// Download
 	if err := utils.DownloadFile(downloadURL, savePath); err != nil {

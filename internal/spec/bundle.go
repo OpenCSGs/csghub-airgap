@@ -150,6 +150,24 @@ func WithK3sSkip(skip bool) BundleSpecOption {
 	}
 }
 
+func WithK3sEnvs(envs []string) BundleSpecOption {
+	return func(bs *BundleSpec) {
+		if bs.K3s == nil {
+			bs.K3s = NewK3sSpec(bs.DestDir)
+		}
+		bs.K3s.InstallEnvs = append(bs.K3s.InstallEnvs, envs...)
+	}
+}
+
+func WithK3sArgs(args []string) BundleSpecOption {
+	return func(bs *BundleSpec) {
+		if bs.K3s == nil {
+			bs.K3s = NewK3sSpec(bs.DestDir)
+		}
+		bs.K3s.InstallArgs = append(bs.K3s.InstallArgs, args...)
+	}
+}
+
 func WithCsghubVersion(ver string) BundleSpecOption {
 	return func(bs *BundleSpec) {
 		if bs.Csghub == nil {

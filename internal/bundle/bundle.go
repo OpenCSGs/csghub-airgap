@@ -36,7 +36,7 @@ func (s *Spec) Create() error {
 	if runtime.GOOS != "linux" {
 		return fmt.Errorf("unsupported platform")
 	}
-	
+
 	switch runtime.GOARCH {
 	case "amd64", "arm64":
 		// supported
@@ -96,6 +96,46 @@ func (s *Spec) Create() error {
 	return nil
 }
 
+func (s *Spec) Deploy() error {
+	log.Info("deploy csghub...")
+
+	if err := k3s.Install(s.K3s); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func LoadFromManifest(destDir string, bs *spec.BundleSpec) (*Spec, error) {
+	manifestFilePath := filepath.Join(destDir, "manifest.yaml")
+	bundleSpec, err := loadSpecFromManifest(manifestFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	if bs.K3s != nil {
+		bundleSpec.K3s = bs.K3s
+	}
+
+	if bs.Csghub != nil {
+		bundleSpec.Csghub = bs.Csghub
+	}
+
+	if bs.Longhorn != nil {
+		bundleSpec.Longhorn = bs.Longhorn
+	}
+
+	if bs.Nvdp != nil {
+		bundleSpec.Nvdp = bs.Nvdp
+	}
+
+	if bs.DestDir != "" {
+		bundleSpec.DestDir = bs.DestDir
+	}
+
+	return bundleSpec, nil
+}
+
 func (s *Spec) Manifest() error {
 	outDir := utils.NVL(s.DestDir, config.DefaultDestDir)
 	if err := os.MkdirAll(outDir, 0755); err != nil {
@@ -118,16 +158,11 @@ func (s *Spec) Manifest() error {
 	return nil
 }
 
-// LoadSpecFromManifest reads the manifest.yaml file and parses it into a Spec.
-// If destDir is empty, it will use the CLI-specified directory or the default directory.
-func LoadSpecFromManifest(destDir string) (*Spec, error) {
-	// Use provided destDir or fallback to default directory
-	outDir := utils.NVL(destDir, config.DefaultDestDir)
-
-	manifestFile := filepath.Join(outDir, "manifest.yaml")
-
+// loadSpecFromManifest reads the manifest.yaml file and parses it into a Spec.
+// If srcDir is empty, it will use the CLI-specified directory or the default directory.
+func loadSpecFromManifest(manifest string) (*Spec, error) {
 	// Read the manifest.yaml file
-	data, err := os.ReadFile(manifestFile)
+	data, err := os.ReadFile(manifest)
 	if err != nil {
 		return nil, err
 	}
@@ -136,11 +171,6 @@ func LoadSpecFromManifest(destDir string) (*Spec, error) {
 	// Unmarshal YAML content into Spec
 	if err = yaml.Unmarshal(data, &s); err != nil {
 		return nil, err
-	}
-
-	// Ensure DestDir is set
-	if s.DestDir == "" {
-		s.DestDir = outDir
 	}
 
 	return &s, nil

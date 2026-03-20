@@ -4,9 +4,9 @@ import (
 	"csghub-airgap/internal/bundle"
 	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/flag"
+	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/urfave/cli/v2"
@@ -25,7 +25,7 @@ func main() {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err)
+		log.Fatalf("%v", err)
 	}
 }
 
@@ -38,7 +38,7 @@ func createCommand() *cli.Command {
 			&cli.StringFlag{
 				Name:     "output",
 				Aliases:  []string{"o"},
-				Usage:    "output bundle path",
+				Usage:    "Output bundle path",
 				Required: false,
 				Value:    config.DefaultDestDir,
 			},
@@ -46,32 +46,44 @@ func createCommand() *cli.Command {
 			&cli.StringFlag{
 				Name:    "k3s-version",
 				Aliases: []string{"kv"},
-				Usage:   "k3s version",
+				Usage:   "K3s version",
+				EnvVars: []string{"INSTALL_K3S_VERSION"},
 				Value:   "v1.34.5+k3s1",
 			},
 			&cli.BoolFlag{
 				Name:    "skip-k3s",
 				Aliases: []string{"sk"},
-				Usage:   "skip k3s offline",
+				Usage:   "Skip k3s offline",
 				Value:   false,
 			},
+			//&cli.StringSliceFlag{
+			//	Name:    "k3s-env",
+			//	Aliases: []string{"ke"},
+			//	Usage:   "Set k3s install environments",
+			//},
+			//&cli.StringSliceFlag{
+			//	Name:    "k3s-arg",
+			//	Aliases: []string{"ka"},
+			//	Usage:   "Set k3s install arguments",
+			//},
+
 			// ===== CSGHub =====
 			&cli.StringFlag{
 				Name:    "csghub-version",
 				Aliases: []string{"cv"},
-				Usage:   "csghub chart version",
+				Usage:   "Csghub chart version",
 			},
 
 			// ===== Longhorn =====
 			&cli.StringFlag{
 				Name:    "longhorn-version",
 				Aliases: []string{"lv"},
-				Usage:   "longhorn chart version",
+				Usage:   "Longhorn chart version",
 			},
 			&cli.BoolFlag{
 				Name:    "skip-longhorn",
 				Aliases: []string{"sl"},
-				Usage:   "skip longhorn offline",
+				Usage:   "Skip longhorn offline",
 				Value:   false,
 			},
 
@@ -79,19 +91,19 @@ func createCommand() *cli.Command {
 			&cli.StringFlag{
 				Name:    "nvdp-version",
 				Aliases: []string{"nv"},
-				Usage:   "nvidia device plugin version",
+				Usage:   "Nvidia device plugin version",
 			},
 			&cli.BoolFlag{
 				Name:    "skip-nvdp",
 				Aliases: []string{"sn"},
-				Usage:   "skip nvdp offline",
+				Usage:   "Skip nvdp offline",
 				Value:   false,
 			},
 
 			// ===== All Charts =====
 			&cli.StringSliceFlag{
 				Name:  "set",
-				Usage: "set chart values (e.g. csghub.global.image.registry=xxx)",
+				Usage: "Set chart values (e.g. csghub.global.image.registry=xxx)",
 			},
 		},
 		Action: func(c *cli.Context) error {
@@ -105,6 +117,14 @@ func createCommand() *cli.Command {
 			}
 
 			opts = append(opts, spec.WithK3sSkip(c.Bool("skip-k3s")))
+
+			//if k3sEnvs := c.StringSlice("k3s-env"); len(k3sEnvs) > 0 {
+			//	opts = append(opts, spec.WithK3sEnvs(k3sEnvs))
+			//}
+			//
+			//if k3sArgs := c.StringSlice("k3s-arg"); len(k3sArgs) > 0 {
+			//	opts = append(opts, spec.WithK3sArgs(k3sArgs))
+			//}
 
 			// ===== chart version =====
 			// ===== CSGHub =====
@@ -160,68 +180,116 @@ func deployCommand() *cli.Command {
 		Name:  "deploy",
 		Usage: "Deploy csghub from offline bundle",
 		Flags: []cli.Flag{
+			// ===== Global =====
 			&cli.StringFlag{
-				Name:     "bundle",
-				Usage:    "offline bundle path",
-				Required: true,
+				Name:     "input",
+				Aliases:  []string{"i"},
+				Usage:    "Input bundle path",
+				Required: false,
+				Value:    config.DefaultDestDir,
 			},
-
-			// k3s
+			// ===== K3S =====
 			&cli.BoolFlag{
-				Name:  "install-k3s",
-				Usage: "install k3s automatically",
+				Name:    "skip-k3s",
+				Aliases: []string{"sk"},
+				Usage:   "Skip k3s offline",
+				Value:   false,
 			},
-			&cli.StringFlag{
-				Name:  "k3s-version",
-				Usage: "k3s version",
-				Value: "v1.30.0+k3s1",
+			&cli.StringSliceFlag{
+				Name:    "k3s-env",
+				Aliases: []string{"ke"},
+				Usage:   "Set k3s install environments",
+			},
+			&cli.StringSliceFlag{
+				Name:    "k3s-arg",
+				Aliases: []string{"ka"},
+				Usage:   "Set k3s install arguments",
 			},
 
-			// longhorn
+			// ===== CSGHub =====
+
+			// ===== Longhorn =====
 			&cli.BoolFlag{
-				Name:  "install-longhorn",
-				Usage: "install longhorn storage",
-			},
-			&cli.StringFlag{
-				Name:  "longhorn-version",
-				Usage: "longhorn version",
+				Name:    "skip-longhorn",
+				Aliases: []string{"sl"},
+				Usage:   "Skip longhorn offline",
+				Value:   false,
 			},
 
-			// csghub
-			&cli.StringFlag{
-				Name:  "csghub-version",
-				Usage: "csghub version",
+			// ===== Nvdp =====
+			&cli.BoolFlag{
+				Name:    "skip-nvdp",
+				Aliases: []string{"sn"},
+				Usage:   "Skip nvdp offline",
+				Value:   false,
 			},
-			&cli.StringFlag{
-				Name:  "csghub-domain",
-				Usage: "csghub ingress domain",
-			},
-			&cli.IntFlag{
-				Name:  "csghub-replicas",
-				Usage: "csghub replicas",
-				Value: 1,
+
+			// ===== All Charts =====
+			&cli.StringSliceFlag{
+				Name:  "set",
+				Usage: "Set chart values (e.g. csghub.global.image.registry=xxx)",
 			},
 		},
 		Action: func(c *cli.Context) error {
+			var opts []spec.BundleSpecOption
 
-			bundle := c.String("bundle")
+			inputDir := c.String("input")
+			opts = append(opts, spec.WithDestDir(inputDir))
 
-			fmt.Println("Deploying from bundle:", bundle)
+			// ===== k3s =====
+			opts = append(opts, spec.WithK3sSkip(c.Bool("skip-k3s")))
 
-			if c.Bool("install-k3s") {
-				fmt.Println("Installing k3s:", c.String("k3s-version"))
+			if k3sEnvs := c.StringSlice("k3s-env"); len(k3sEnvs) > 0 {
+				opts = append(opts, spec.WithK3sEnvs(k3sEnvs))
 			}
 
-			if c.Bool("install-longhorn") {
-				fmt.Println("Installing longhorn:", c.String("longhorn-version"))
+			if k3sArgs := c.StringSlice("k3s-arg"); len(k3sArgs) > 0 {
+				opts = append(opts, spec.WithK3sArgs(k3sArgs))
 			}
 
-			fmt.Println("Deploying csghub")
-			fmt.Println("Version:", c.String("csghub-version"))
-			fmt.Println("Domain:", c.String("csghub-domain"))
-			fmt.Println("Replicas:", c.Int("csghub-replicas"))
+			// ===== Charts =====
+			// ===== CSGHub =====
+			// ===== Longhorn =====
+			opts = append(opts, spec.WithLonghornSkip(c.Bool("skip-longhorn")))
 
-			// TODO: 执行部署逻辑
+			// ===== NVDP =====
+			opts = append(opts, spec.WithNvdpSkip(c.Bool("skip-nvdp")))
+
+			// ===== chart options =====
+			if sets := c.StringSlice("set"); len(sets) > 0 {
+				all := flag.ParseSetFlags(sets)
+
+				csghubOptions := flag.ExtractByPrefix(all, "csghub")
+				opts = append(opts, spec.WithCsghubOptions(csghubOptions))
+
+				longhornOptions := flag.ExtractByPrefix(all, "longhorn")
+				opts = append(opts, spec.WithLonghornOptions(longhornOptions))
+
+				nvdpOptions := flag.ExtractByPrefix(all, "nvdp")
+				opts = append(opts, spec.WithNvdpOptions(nvdpOptions))
+			}
+
+			bs, err := spec.NewBundleSpec(opts...)
+			if err != nil {
+				return err
+			}
+
+			//marshal, err := yaml.Marshal(bs)
+			//if err != nil {
+			//	return err
+			//}
+			//fmt.Println(string(marshal))
+			//return nil
+
+			bundleSpec, err := bundle.LoadFromManifest(inputDir, bs)
+			if err != nil {
+				return fmt.Errorf("failed to load bundle manifest: %w", err)
+			}
+
+			if err = bundleSpec.Deploy(); err != nil {
+				return fmt.Errorf("deploy csghub failed: %w", err)
+			}
+
 			return nil
 		},
 	}

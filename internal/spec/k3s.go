@@ -2,6 +2,7 @@ package spec
 
 import (
 	"csghub-airgap/internal/config"
+	"csghub-airgap/internal/net"
 	"csghub-airgap/internal/utils"
 	"fmt"
 	"log"
@@ -15,22 +16,38 @@ import (
 )
 
 type K3sSpec struct {
-	ReleaseURL   string `yaml:"release_url" default:"https://ghfast.top/https://github.com/k3s-io/k3s/releases"`
-	ScriptURL    string `yaml:"script_url" default:"https://get.k3s.io"`
-	Version      string `yaml:"version" default:"v1.34.5+k3s1"`
-	Arch         string `yaml:"arch"`
-	HelmURL      string `yaml:"helm_url" default:"https://get.helm.sh"`
-	HelmVersion  string `yaml:"helm_version" default:"v3.20.1"`
-	OS           string `yaml:"os"`
-	SupportArchs string `yaml:"support_archs" default:"amd64,arm64"`
-	DestDir      string `yaml:"dest_dir"`
+	ReleaseURL   string   `yaml:"release_url" default:"https://ghfast.top/https://github.com/k3s-io/k3s/releases"`
+	ScriptURL    string   `yaml:"script_url" default:"https://get.k3s.io"`
+	Version      string   `yaml:"version" default:"v1.34.5+k3s1"`
+	Arch         string   `yaml:"arch"`
+	HelmURL      string   `yaml:"helm_url" default:"https://get.helm.sh"`
+	HelmVersion  string   `yaml:"helm_version" default:"v3.20.1"`
+	OS           string   `yaml:"os"`
+	SupportArchs string   `yaml:"support_archs" default:"amd64,arm64"`
+	DestDir      string   `yaml:"dest_dir"`
+	InstallEnvs  []string `yaml:"install_envs"`
+	InstallArgs  []string `yaml:"install_args"`
 }
 
 func NewK3sSpec(destDir string) *K3sSpec {
+	defaultInterface, err := net.GetDefaultInterface()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	ks := &K3sSpec{
 		Arch:    runtime.GOARCH,
 		OS:      runtime.GOOS,
 		DestDir: utils.NVL(destDir, config.DefaultDestDir),
+		InstallEnvs: []string{
+			"INSTALL_K3S_SKIP_DOWNLOAD=true",
+		},
+		InstallArgs: []string{
+			"--node-name=k3s-master",
+			"--disable=traefik",
+			"--kubelet-arg=eviction-hard=",
+			fmt.Sprintf("--flannel-iface=%s", defaultInterface),
+		},
 	}
 
 	// Populate default values from struct tags
@@ -72,7 +89,12 @@ func (ks *K3sSpec) K3sBinDir() string {
 }
 
 func (ks *K3sSpec) K3sBinFilePath() string {
-	return filepath.Join(ks.K3sDir(), "bin", "k3s")
+	return filepath.Join(ks.K3sBinDir(), "k3s")
+}
+
+func (ks *K3sSpec) K3sHelmFilePath() string {
+	helmFileName := fmt.Sprintf("helm-%s-%s-%s.tar.gz", ks.HelmVersion, ks.OS, ks.Arch)
+	return filepath.Join(ks.K3sBinDir(), helmFileName)
 }
 
 func (ks *K3sSpec) K3sImageDir() string {
