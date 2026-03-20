@@ -1,6 +1,7 @@
 package log
 
 import (
+	"io"
 	"log"
 	"os"
 
@@ -19,8 +20,16 @@ func init() {
 	Log.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp: true,
 	})
+}
 
-	Std = log.New(Log.Out, "", log.LstdFlags)
+func Init(debug bool) {
+	if debug {
+		Log.SetLevel(logrus.DebugLevel)
+		Std = log.New(Log.Out, "[HELM]", log.LstdFlags)
+	} else {
+		Log.SetLevel(logrus.InfoLevel)
+		Std = log.New(io.Discard, "[HELM]", log.LstdFlags)
+	}
 }
 
 // Info logs a message at level Info

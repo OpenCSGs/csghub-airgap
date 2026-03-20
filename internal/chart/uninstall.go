@@ -1,14 +1,43 @@
 package chart
 
 import (
+	"csghub-airgap/internal/log"
+	"csghub-airgap/internal/spec"
 	"fmt"
-	"log"
+	logger "log"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
 )
 
-func runUninstall(logger *log.Logger, settings *cli.EnvSettings, releaseName string) error {
+func Uninstall(spec *spec.ChartSpec) error {
+	namespace := spec.RepoName
+
+	// Initialize Helm settings
+	settings := cli.New()
+	settings.KubeConfig = "/etc/rancher/k3s/k3s.yaml"
+
+	if namespace != "" {
+		settings.SetNamespace(namespace)
+	}
+
+	releaseName := spec.RepoName
+	if releaseName == "" {
+		return fmt.Errorf("release name must be specified")
+	}
+
+	log.Infof("Uninstalling release %s", releaseName)
+
+	// Run uninstall
+	if err := runUninstall(log.Std, settings, releaseName); err != nil {
+		return err
+	}
+
+	log.Infof("Uninstall completed: %s", releaseName)
+	return nil
+}
+
+func runUninstall(logger *logger.Logger, settings *cli.EnvSettings, releaseName string) error {
 	actionConfig, err := initActionConfig(settings, logger)
 	if err != nil {
 		return fmt.Errorf("failed to init action config: %w", err)
@@ -25,7 +54,7 @@ func runUninstall(logger *log.Logger, settings *cli.EnvSettings, releaseName str
 		logger.Printf("result: %+v\n", *result.Release)
 	}
 
-	logger.Printf("release \"%s\" uninstalled\n", releaseName)
+	log.Infof("release \"%s\" uninstalled\n", releaseName)
 
 	return nil
 }

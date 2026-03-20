@@ -37,7 +37,7 @@ func (s *Spec) Create() error {
 			c.ChartVersion = chart.LastVersion(c).String()
 		}
 
-		if err := chart.Download(c); err != nil {
+		if err := chart.Pull(c); err != nil {
 			return err
 		}
 

@@ -1,6 +1,7 @@
 package bundle
 
 import (
+	"csghub-airgap/internal/chart"
 	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/image"
 	"csghub-airgap/internal/k3s"
@@ -40,6 +41,16 @@ func (s *Spec) Deploy() error {
 		}
 		if err := image.Import(imageSpec); err != nil {
 			return err
+		}
+
+		if chart.List(c) {
+			if err := chart.Upgrade(c); err != nil {
+				return err
+			}
+		} else {
+			if err := chart.Install(c); err != nil {
+				return err
+			}
 		}
 	}
 

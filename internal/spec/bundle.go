@@ -61,6 +61,17 @@ func NewCsghubSpec(destDir string, options map[string]interface{}) *ChartSpec {
 					"registry": "opencsg-registry.cn-beijing.cr.aliyuncs.com",
 				},
 				"imageRegistry": "opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq",
+				"edition":       "ee",
+				"gateway": map[string]interface{}{
+					"external": map[string]interface{}{
+						"domain": "csghub.example.com",
+					},
+				},
+			},
+			"server": map[string]interface{}{
+				"gitlabShell": map[string]interface{}{
+					"sshPort": "2222",
+				},
 			},
 			"runner": map[string]interface{}{
 				"registry": map[string]interface{}{
@@ -94,6 +105,15 @@ func NewLonghornSpec(destDir string, options map[string]interface{}) *ChartSpec 
 		ChartOptions: utils.NVLMap(options, map[string]interface{}{
 			"global": map[string]interface{}{
 				"imageRegistry": "docker.1ms.run",
+			},
+			"persistence": map[string]interface{}{
+				"backupTargetName": "",
+			},
+			"defaultSettings": map[string]interface{}{
+				"defaultDataPath":                         "/var/lib/longhorn/",
+				"storageOverProvisioningPercentage":       10,
+				"storageMinimalAvailablePercentage":       10,
+				"storageReservedPercentageForDefaultDisk": 10,
 			},
 		}),
 	}

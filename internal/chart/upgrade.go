@@ -2,8 +2,10 @@ package chart
 
 import (
 	"context"
+	"csghub-airgap/internal/log"
+	"csghub-airgap/internal/spec"
 	"fmt"
-	"log"
+	logger "log"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -12,7 +14,46 @@ import (
 	"helm.sh/helm/v3/pkg/getter"
 )
 
-func runUpgrade(ctx context.Context, logger *log.Logger, settings *cli.EnvSettings, releaseName string, chartRef string, chartVersion string, releaseValues map[string]interface{}) error {
+func Upgrade(spec *spec.ChartSpec) error {
+	ctx := context.Background()
+
+	namespace := spec.RepoName
+
+	// Initialize Helm settings
+	settings := cli.New()
+	settings.KubeConfig = "/etc/rancher/k3s/k3s.yaml"
+
+	if namespace != "" {
+		settings.SetNamespace(namespace)
+	}
+
+	chartRef := spec.ChartRef()
+	chartVersion := spec.ChartVersion
+	releaseName := spec.RepoName
+
+	if releaseName == "" {
+		return fmt.Errorf("release name must be specified")
+	}
+
+	log.Infof("Upgrading release %s with chart %s:%s", releaseName, chartRef, chartVersion)
+
+	// Values (can be empty)
+	values := map[string]interface{}{}
+	if spec.ChartOptions != nil {
+		values = spec.ChartOptions
+	}
+
+	// Run upgrade
+	if err := runUpgrade(ctx, log.Std, settings, releaseName, chartRef, chartVersion, values); err != nil {
+		return err
+	}
+
+	log.Infof("Upgrade completed: %s", releaseName)
+
+	return nil
+}
+
+func runUpgrade(ctx context.Context, logger *logger.Logger, settings *cli.EnvSettings, releaseName string, chartRef string, chartVersion string, releaseValues map[string]interface{}) error {
 	actionConfig, err := initActionConfig(settings, logger)
 	if err != nil {
 		return fmt.Errorf("failed to init action config: %w", err)
@@ -23,6 +64,8 @@ func runUpgrade(ctx context.Context, logger *log.Logger, settings *cli.EnvSettin
 	upgradeClient.Namespace = settings.Namespace()
 	upgradeClient.DryRunOption = "none"
 	upgradeClient.Version = chartVersion
+	upgradeClient.Install = true
+	upgradeClient.Wait = true
 
 	registryClient, err := newRegistryClientTLS(
 		settings,
@@ -35,6 +78,7 @@ func runUpgrade(ctx context.Context, logger *log.Logger, settings *cli.EnvSettin
 	if err != nil {
 		return fmt.Errorf("missing registry client: %w", err)
 	}
+
 	upgradeClient.SetRegistryClient(registryClient)
 
 	chartPath, err := upgradeClient.ChartPathOptions.LocateChart(chartRef, settings)
@@ -81,7 +125,7 @@ func runUpgrade(ctx context.Context, logger *log.Logger, settings *cli.EnvSettin
 		return fmt.Errorf("failed to run upgrade action: %w", err)
 	}
 
-	logger.Printf("release: %+v", release)
+	log.Debugf("release: %+v", release)
 
 	return nil
 }

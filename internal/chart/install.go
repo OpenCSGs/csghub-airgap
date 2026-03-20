@@ -2,8 +2,10 @@ package chart
 
 import (
 	"context"
+	"csghub-airgap/internal/log"
+	"csghub-airgap/internal/spec"
 	"fmt"
-	"log"
+	logger "log"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -12,7 +14,45 @@ import (
 	"helm.sh/helm/v3/pkg/getter"
 )
 
-func runInstall(ctx context.Context, logger *log.Logger, settings *cli.EnvSettings, releaseName string, chartRef string, chartVersion string, releaseValues map[string]interface{}) error {
+func Install(spec *spec.ChartSpec) error {
+	ctx := context.Background()
+
+	namespace := spec.RepoName
+
+	// Initialize Helm settings
+	settings := cli.New()
+	settings.KubeConfig = "/etc/rancher/k3s/k3s.yaml"
+
+	if namespace != "" {
+		settings.SetNamespace(namespace)
+	}
+
+	chartRef := spec.ChartRef()
+	chartVersion := spec.ChartVersion
+	releaseName := spec.RepoName
+
+	if releaseName == "" {
+		return fmt.Errorf("release name must be specified")
+	}
+
+	log.Infof("Installing chart %s:%s as release %s", chartRef, chartVersion, releaseName)
+
+	// Values (can be empty)
+	values := map[string]interface{}{}
+	if spec.ChartOptions != nil {
+		values = spec.ChartOptions
+	}
+
+	// Run install
+	if err := runInstall(ctx, log.Std, settings, releaseName, chartRef, chartVersion, values); err != nil {
+		return err
+	}
+
+	logger.Printf("Install completed: %s", releaseName)
+	return nil
+}
+
+func runInstall(ctx context.Context, logger *logger.Logger, settings *cli.EnvSettings, releaseName string, chartRef string, chartVersion string, releaseValues map[string]interface{}) error {
 	actionConfig, err := initActionConfig(settings, logger)
 	if err != nil {
 		return fmt.Errorf("failed to init action config: %w", err)
@@ -24,6 +64,8 @@ func runInstall(ctx context.Context, logger *log.Logger, settings *cli.EnvSettin
 	installClient.ReleaseName = releaseName
 	installClient.Namespace = settings.Namespace()
 	installClient.Version = chartVersion
+	installClient.CreateNamespace = true
+	installClient.Wait = true
 
 	registryClient, err := newRegistryClientTLS(
 		settings,
@@ -84,7 +126,7 @@ func runInstall(ctx context.Context, logger *log.Logger, settings *cli.EnvSettin
 		return fmt.Errorf("failed to run install: %w", err)
 	}
 
-	logger.Printf("release created:\n%+v", *release)
+	log.Debugf("release created:\n%+v", *release)
 
 	return nil
 }

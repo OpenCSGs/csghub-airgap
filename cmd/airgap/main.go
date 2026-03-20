@@ -207,6 +207,12 @@ func deployCommand() *cli.Command {
 			},
 
 			// ===== CSGHub =====
+			&cli.StringFlag{
+				Name:    "csghub-domain",
+				Aliases: []string{"cd"},
+				Usage:   "Specify csghub domain",
+				Value:   "csghub.example.com",
+			},
 
 			// ===== Longhorn =====
 			&cli.BoolFlag{
@@ -229,8 +235,17 @@ func deployCommand() *cli.Command {
 				Name:  "set",
 				Usage: "Set chart values (e.g. csghub.global.image.registry=xxx)",
 			},
+			&cli.BoolFlag{
+				Name:    "debug",
+				Aliases: []string{"d"},
+				Usage:   "Turn on debug mode",
+				Value:   false,
+			},
 		},
 		Action: func(c *cli.Context) error {
+			debug := c.Bool("debug")
+			log.Init(debug)
+
 			var opts []spec.BundleSpecOption
 
 			inputDir := c.String("input")
@@ -249,6 +264,17 @@ func deployCommand() *cli.Command {
 
 			// ===== Charts =====
 			// ===== CSGHub =====
+			csghubOptions := map[string]interface{}{
+				"global": map[string]interface{}{
+					"gateway": map[string]interface{}{
+						"external": map[string]interface{}{
+							"domain": c.String("csghub-domain"),
+						},
+					},
+				},
+			}
+			opts = append(opts, spec.WithCsghubOptions(csghubOptions))
+
 			// ===== Longhorn =====
 			opts = append(opts, spec.WithLonghornSkip(c.Bool("skip-longhorn")))
 
@@ -280,7 +306,7 @@ func deployCommand() *cli.Command {
 			}
 
 			if err = bundleSpec.Deploy(); err != nil {
-				return fmt.Errorf("deploy csghub failed: %w", err)
+				return fmt.Errorf("%w", err)
 			}
 
 			return nil

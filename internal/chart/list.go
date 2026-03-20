@@ -5,16 +5,70 @@ import (
 	"csghub-airgap/internal/spec"
 	"fmt"
 	"io"
+	logger "log"
 	"net/http"
 	"net/url"
 	"sort"
 
 	"github.com/Masterminds/semver/v3"
+	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/repo"
 	"sigs.k8s.io/yaml"
 )
 
-func List(spec *spec.ChartSpec) ([]*semver.Version, error) {
+func List(spec *spec.ChartSpec) bool {
+	namespace := spec.RepoName
+
+	// Initialize Helm settings
+	settings := cli.New()
+	settings.KubeConfig = "/etc/rancher/k3s/k3s.yaml"
+
+	if namespace != "" {
+		settings.SetNamespace(namespace)
+	}
+
+	log.Infof("Listing releases in namespace: %s", settings.Namespace())
+
+	// Run list action
+	releaseInstalled, err := runList(log.Std, settings)
+	if err != nil {
+		log.Fatalf("Error listing releases: %v", err)
+		return false
+	}
+
+	if len(releaseInstalled) > 0 {
+		return true
+	}
+
+	return false
+}
+
+func runList(logger *logger.Logger, settings *cli.EnvSettings) ([]*release.Release, error) {
+
+	actionConfig, err := initActionConfigList(settings, logger, false)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init action config: %w", err)
+	}
+
+	listClient := action.NewList(actionConfig)
+	// Only list deployed
+	//listClient.Deployed = true
+	listClient.All = true
+	listClient.SetStateMask()
+
+	results, err := listClient.Run()
+	if err != nil {
+		return nil, fmt.Errorf("failed to run list action: %w", err)
+	}
+
+	log.Debugf("Found %d releases", len(results))
+
+	return results, nil
+}
+
+func ListChart(spec *spec.ChartSpec) ([]*semver.Version, error) {
 	indexURL, err := url.JoinPath(spec.RepoURL, "index.yaml")
 	if err != nil {
 		return nil, err
@@ -52,7 +106,7 @@ func List(spec *spec.ChartSpec) ([]*semver.Version, error) {
 }
 
 func LastVersion(spec *spec.ChartSpec) *semver.Version {
-	versions, err := List(spec)
+	versions, err := ListChart(spec)
 	if err != nil {
 		log.Fatalf("failed to list chart versions: %s", err)
 		return nil
