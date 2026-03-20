@@ -81,6 +81,12 @@ func createCommand() *cli.Command {
 				Aliases: []string{"nv"},
 				Usage:   "nvidia device plugin version",
 			},
+			&cli.BoolFlag{
+				Name:    "skip-nvdp",
+				Aliases: []string{"sn"},
+				Usage:   "skip nvdp offline",
+				Value:   false,
+			},
 
 			// ===== All Charts =====
 			&cli.StringSliceFlag{
@@ -117,6 +123,8 @@ func createCommand() *cli.Command {
 			if v := c.String("nvdp-version"); v != "" {
 				opts = append(opts, spec.WithNvdpVersion(v))
 			}
+
+			opts = append(opts, spec.WithNvdpSkip(c.Bool("skip-nvdp")))
 
 			// ===== chart options =====
 			if sets := c.StringSlice("set"); len(sets) > 0 {

@@ -13,6 +13,7 @@ type BundleSpec struct {
 	Longhorn     *ChartSpec `yaml:"longhorn"`
 	SkipLonghorn bool       `yaml:"skip-longhorn"`
 	Nvdp         *ChartSpec `yaml:"nvdp"`
+	SkipNvdp     bool       `yaml:"skip-nvdp"`
 	Arch         string     `yaml:"arch"`
 	DestDir      string     `yaml:"dest_dir"`
 }
@@ -179,5 +180,11 @@ func WithNvdpVersion(ver string) BundleSpecOption {
 			bs.Nvdp = NewNvdpSpec(bs.DestDir, nil)
 		}
 		bs.Nvdp.ChartVersion = ver
+	}
+}
+
+func WithNvdpSkip(skip bool) BundleSpecOption {
+	return func(bs *BundleSpec) {
+		bs.SkipNvdp = skip
 	}
 }

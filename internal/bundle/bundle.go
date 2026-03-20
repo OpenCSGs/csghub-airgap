@@ -19,6 +19,7 @@ func NewFromSpec(bs *spec.BundleSpec) *Spec {
 		Longhorn:     bs.Longhorn,
 		SkipLonghorn: bs.SkipLonghorn,
 		Nvdp:         bs.Nvdp,
+		SkipNvdp:     bs.SkipNvdp,
 		Arch:         bs.Arch,
 		DestDir:      bs.DestDir,
 	}
@@ -37,7 +38,11 @@ func (s *Spec) Create() error {
 		charts = append(charts, s.Longhorn)
 	}
 
-	charts = append(charts, s.Nvdp, s.Csghub)
+	if !s.SkipNvdp {
+		charts = append(charts, s.Nvdp)
+	}
+
+	charts = append(charts, s.Csghub)
 
 	for _, c := range charts {
 		if c.ChartVersion == "" {
