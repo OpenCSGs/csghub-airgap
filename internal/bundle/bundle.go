@@ -13,25 +13,31 @@ type Spec spec.BundleSpec
 
 func NewFromSpec(bs *spec.BundleSpec) *Spec {
 	return &Spec{
-		K3s:      bs.K3s,
-		Csghub:   bs.Csghub,
-		Longhorn: bs.Longhorn,
-		Nvdp:     bs.Nvdp,
-		Arch:     bs.Arch,
-		DestDir:  bs.DestDir,
+		K3s:          bs.K3s,
+		SkipK3s:      bs.SkipK3s,
+		Csghub:       bs.Csghub,
+		Longhorn:     bs.Longhorn,
+		SkipLonghorn: bs.SkipLonghorn,
+		Nvdp:         bs.Nvdp,
+		Arch:         bs.Arch,
+		DestDir:      bs.DestDir,
 	}
 }
 
 func (s *Spec) Create() error {
-	if err := k3s.DownloadK3S(s.K3s); err != nil {
-		return err
+	if !s.SkipK3s {
+		if err := k3s.DownloadK3S(s.K3s); err != nil {
+			return err
+		}
 	}
 
-	charts := []*spec.ChartSpec{
-		s.Longhorn,
-		s.Nvdp,
-		s.Csghub,
+	var charts []*spec.ChartSpec
+
+	if !s.SkipLonghorn {
+		charts = append(charts, s.Longhorn)
 	}
+
+	charts = append(charts, s.Nvdp, s.Csghub)
 
 	for _, c := range charts {
 		if c.ChartVersion == "" {

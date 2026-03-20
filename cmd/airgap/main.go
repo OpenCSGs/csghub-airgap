@@ -49,22 +49,40 @@ func createCommand() *cli.Command {
 				Usage:   "k3s version",
 				Value:   "v1.34.5+k3s1",
 			},
+			&cli.BoolFlag{
+				Name:    "skip-k3s",
+				Aliases: []string{"sk"},
+				Usage:   "skip k3s offline",
+				Value:   false,
+			},
 			// ===== CSGHub =====
 			&cli.StringFlag{
 				Name:    "csghub-version",
 				Aliases: []string{"cv"},
 				Usage:   "csghub chart version",
 			},
+
+			// ===== Longhorn =====
 			&cli.StringFlag{
 				Name:    "longhorn-version",
 				Aliases: []string{"lv"},
 				Usage:   "longhorn chart version",
 			},
+			&cli.BoolFlag{
+				Name:    "skip-longhorn",
+				Aliases: []string{"sl"},
+				Usage:   "skip longhorn offline",
+				Value:   false,
+			},
+
+			// ===== Nvdp =====
 			&cli.StringFlag{
 				Name:    "nvdp-version",
 				Aliases: []string{"nv"},
 				Usage:   "nvidia device plugin version",
 			},
+
+			// ===== All Charts =====
 			&cli.StringSliceFlag{
 				Name:  "set",
 				Usage: "set chart values (e.g. csghub.global.image.registry=xxx)",
@@ -80,13 +98,22 @@ func createCommand() *cli.Command {
 				opts = append(opts, spec.WithK3sVersion(v))
 			}
 
+			opts = append(opts, spec.WithK3sSkip(c.Bool("skip-k3s")))
+
 			// ===== chart version =====
+			// ===== CSGHub =====
 			if v := c.String("csghub-version"); v != "" {
 				opts = append(opts, spec.WithCsghubVersion(v))
 			}
+
+			// ===== Longhorn =====
 			if v := c.String("longhorn-version"); v != "" {
 				opts = append(opts, spec.WithLonghornVersion(v))
 			}
+
+			opts = append(opts, spec.WithLonghornSkip(c.Bool("skip-longhorn")))
+
+			// ===== NVDP =====
 			if v := c.String("nvdp-version"); v != "" {
 				opts = append(opts, spec.WithNvdpVersion(v))
 			}
@@ -111,7 +138,7 @@ func createCommand() *cli.Command {
 			}
 
 			bundleSpec := bundle.NewFromSpec(bs)
-			if err := bundleSpec.Create(); err != nil {
+			if err = bundleSpec.Create(); err != nil {
 				return fmt.Errorf("create csghub bundle: %w", err)
 			}
 

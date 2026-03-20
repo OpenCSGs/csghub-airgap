@@ -7,20 +7,24 @@ import (
 )
 
 type BundleSpec struct {
-	K3s      *K3sSpec   `yaml:"k3s"`
-	Csghub   *ChartSpec `yaml:"csghub"`
-	Longhorn *ChartSpec `yaml:"longhorn"`
-	Nvdp     *ChartSpec `yaml:"nvdp"`
-	Arch     string     `yaml:"arch"`
-	DestDir  string     `yaml:"dest_dir"`
+	K3s          *K3sSpec   `yaml:"k3s"`
+	SkipK3s      bool       `yaml:"skip-k3s"`
+	Csghub       *ChartSpec `yaml:"csghub"`
+	Longhorn     *ChartSpec `yaml:"longhorn"`
+	SkipLonghorn bool       `yaml:"skip-longhorn"`
+	Nvdp         *ChartSpec `yaml:"nvdp"`
+	Arch         string     `yaml:"arch"`
+	DestDir      string     `yaml:"dest_dir"`
 }
 
 type BundleSpecOption func(*BundleSpec)
 
 func NewBundleSpec(opts ...BundleSpecOption) (*BundleSpec, error) {
 	bs := &BundleSpec{
-		Arch:    runtime.GOARCH,
-		DestDir: config.DefaultDestDir,
+		SkipK3s:      false,
+		SkipLonghorn: false,
+		Arch:         runtime.GOARCH,
+		DestDir:      config.DefaultDestDir,
 	}
 
 	if bs.K3s == nil {
@@ -139,6 +143,12 @@ func WithK3sVersion(ver string) BundleSpecOption {
 	}
 }
 
+func WithK3sSkip(skip bool) BundleSpecOption {
+	return func(bs *BundleSpec) {
+		bs.SkipK3s = skip
+	}
+}
+
 func WithCsghubVersion(ver string) BundleSpecOption {
 	return func(bs *BundleSpec) {
 		if bs.Csghub == nil {
@@ -154,6 +164,12 @@ func WithLonghornVersion(ver string) BundleSpecOption {
 			bs.Longhorn = NewLonghornSpec(bs.DestDir, nil)
 		}
 		bs.Longhorn.ChartVersion = ver
+	}
+}
+
+func WithLonghornSkip(skip bool) BundleSpecOption {
+	return func(bs *BundleSpec) {
+		bs.SkipLonghorn = skip
 	}
 }
 
