@@ -27,11 +27,11 @@ func LoadFromManifest(destDir string, bs *spec.BundleSpec) (*Spec, error) {
 	}
 
 	if bs.Csghub != nil {
-		bundleSpec.Csghub = bs.Csghub
+		bundleSpec.Csghub.Merge(bs.Csghub)
 	}
 
 	if bs.Longhorn != nil {
-		bundleSpec.Longhorn = bs.Longhorn
+		bundleSpec.Longhorn.Merge(bs.Longhorn)
 	}
 
 	if !bundleSpec.SkipLonghorn {
@@ -39,7 +39,7 @@ func LoadFromManifest(destDir string, bs *spec.BundleSpec) (*Spec, error) {
 	}
 
 	if bs.Nvdp != nil {
-		bundleSpec.Nvdp = bs.Nvdp
+		bundleSpec.Nvdp.Merge(bs.Nvdp)
 	}
 
 	if !bundleSpec.SkipNvdp {

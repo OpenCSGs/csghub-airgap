@@ -274,13 +274,6 @@ func deployCommand() *cli.Command {
 				return err
 			}
 
-			//marshal, err := yaml.Marshal(bs)
-			//if err != nil {
-			//	return err
-			//}
-			//fmt.Println(string(marshal))
-			//return nil
-
 			bundleSpec, err := bundle.LoadFromManifest(inputDir, bs)
 			if err != nil {
 				return fmt.Errorf("failed to load bundle manifest: %w", err)

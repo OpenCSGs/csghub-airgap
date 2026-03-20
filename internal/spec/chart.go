@@ -6,6 +6,7 @@ import (
 	"csghub-airgap/internal/utils"
 	"fmt"
 	"path/filepath"
+	"reflect"
 )
 
 type ChartSpec struct {
@@ -42,6 +43,25 @@ func (cs *ChartSpec) ChartFileName() string {
 
 func (cs *ChartSpec) ChartFilePath() string {
 	return filepath.Join(cs.ChartDir(), cs.ChartFileName())
+}
+
+func (cs *ChartSpec) Merge(ds *ChartSpec) {
+	if ds == nil {
+		return
+	}
+
+	av := reflect.ValueOf(cs).Elem()
+	bv := reflect.ValueOf(ds).Elem()
+
+	for i := 0; i < av.NumField(); i++ {
+		fieldA := av.Field(i)
+		fieldB := bv.Field(i)
+
+		// only set if fieldB is non-zero and settable
+		if fieldB.IsValid() && !utils.IsZeroValue(fieldB) && fieldA.CanSet() {
+			fieldA.Set(fieldB)
+		}
+	}
 }
 
 func WithCsghubOptions(opts map[string]interface{}) BundleSpecOption {
