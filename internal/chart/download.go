@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
@@ -29,6 +30,16 @@ func Download(spec *spec.ChartSpec) error {
 	rf.Update(&repo.Entry{Name: spec.RepoName, URL: spec.RepoURL})
 	if err = rf.WriteFile(repoFile, 0644); err != nil {
 		return fmt.Errorf("failed to write repo config: %v", err)
+	}
+
+	entry := &repo.Entry{Name: spec.RepoName, URL: spec.RepoURL}
+	chartRepo, err := repo.NewChartRepository(entry, getter.All(settings))
+	if err != nil {
+		return fmt.Errorf("failed to create chart repo for %s: %v", spec.RepoName, err)
+	}
+
+	if _, err := chartRepo.DownloadIndexFile(); err != nil {
+		return fmt.Errorf("failed to download repo index for %s: %v", spec.RepoName, err)
 	}
 
 	chartDir := spec.ChartDir()
