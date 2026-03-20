@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,7 +19,7 @@ import (
 
 const (
 	DefaultRetry   = 3
-	DefaultTimeout = 30
+	DefaultTimeout = 10
 )
 
 // DownloadFile is a generic file download function
@@ -64,7 +65,14 @@ func DownloadFile(url, savePath string) error {
 // downloadOnce performs a single download attempt
 func downloadOnce(url, savePath string, timeout int) error {
 	client := &http.Client{
-		Timeout: time.Duration(timeout) * time.Second,
+		Transport: &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout:   time.Duration(timeout) * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			TLSHandshakeTimeout:   5 * time.Second,
+			ResponseHeaderTimeout: 10 * time.Second,
+		},
 	}
 
 	// HEAD request to get file size
