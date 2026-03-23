@@ -59,7 +59,7 @@ func PreparePackages(destDir string) error {
 		}
 		// Download prerequisites packages to packageDir with dependencies
 		if err := utils.ExecCommand("apt-get", "-y", "-d", "install", "-o", fmt.Sprintf("dir::cache=%s", packageDir),
-			"--download-only", "--reinstall", "--no-install-recommends", "ca-certificates", "curl", "gnupg2"); err != nil {
+			"--download-only", "--reinstall", "--no-install-recommends", "ca-certificates", "curl", "gnupg2", "jq", "nfs-common"); err != nil {
 			return err
 		}
 
@@ -93,8 +93,8 @@ func PreparePackages(destDir string) error {
 
 	// RHEL / CentOS / Rocky / AlmaLinux / Fedora
 	case "rhel", "centos", "almalinux", "fedora":
-		// Install prerequisites
-		if err := utils.ExecCommand("dnf", "-y", "install", "curl", "ca-certificates"); err != nil {
+		// Install prerequisites including nfs-utils
+		if err := utils.ExecCommand("dnf", "-y", "install", "curl", "ca-certificates", "jq", "nfs-utils"); err != nil {
 			return err
 		}
 
@@ -120,6 +120,11 @@ func PreparePackages(destDir string) error {
 
 	// OpenSUSE / SLE
 	case "opensuse-leap", "sles", "suse":
+		// Install prerequisites including nfs-client
+		if err := utils.ExecCommand("zypper", "install", "-y", "nfs-client", "jq"); err != nil {
+			return err
+		}
+
 		// Add NVIDIA repository
 		if err := utils.ExecCommand("zypper", "ar", "-f", "https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo"); err != nil {
 			return err
@@ -187,28 +192,31 @@ func InstallPackages(destDir string) error {
 		// Install all .deb files from packageDir/archives using dpkg
 		archivesDir := filepath.Join(packageDir, "archives")
 		// Use dpkg -i to install all .deb files at once
-		if err := utils.ExecCommand("dpkg", "-i", filepath.Join(archivesDir, "*.deb")); err != nil {
+		cmd := fmt.Sprintf("apt install -y %s", filepath.Join(archivesDir, "*.deb"))
+		if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
 			// dpkg -i may fail due to missing dependencies, so we proceed to fix them below
 			// Return error only if apt-get -f install fails
 			// But log the error for dpkg -i
-			fmt.Fprintf(os.Stderr, "warning: dpkg -i failed: %v\n", err)
+			fmt.Fprintf(os.Stderr, "warning: apt install failed: %v\n", err)
 		}
 		// Fix broken dependencies
-		if err := utils.ExecCommand("apt-get", "-f", "install", "-y"); err != nil {
+		if err := utils.ExecCommand("bash", "-c", "apt-get -f install -y"); err != nil {
 			return fmt.Errorf("apt-get -f install failed: %w", err)
 		}
 
 	// RHEL / CentOS / Fedora
 	case "rhel", "centos", "almalinux", "fedora":
 		// Install all .rpm files from packageDir using dnf
-		if err := utils.ExecCommand("dnf", "install", "-y", filepath.Join(packageDir, "*.rpm")); err != nil {
+		cmd := fmt.Sprintf("dnf install -y %s", filepath.Join(packageDir, "*.rpm"))
+		if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
 			return fmt.Errorf("dnf install failed: %w", err)
 		}
 
 	// OpenSUSE / SLE
 	case "opensuse-leap", "sles", "suse":
 		// Install all .rpm files from packageDir using zypper
-		if err := utils.ExecCommand("zypper", "--non-interactive", "install", "-y", filepath.Join(packageDir, "*.rpm")); err != nil {
+		cmd := fmt.Sprintf("zypper --non-interactive install -y %s", filepath.Join(packageDir, "*.rpm"))
+		if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
 			return fmt.Errorf("zypper install failed: %w", err)
 		}
 
