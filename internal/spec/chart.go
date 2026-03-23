@@ -26,8 +26,7 @@ func NewChartSpec(destDir string) *ChartSpec {
 
 func (cs *ChartSpec) ChartRef() string {
 	if cs.RepoName != "" && cs.ChartName != "" {
-		return "./" + cs.ChartFilePath()
-		//return cs.RepoName + "/" + cs.ChartName
+		return cs.RepoName + "/" + cs.ChartName
 	}
 
 	log.Fatalf("Invalid RepoName or ChartName")
