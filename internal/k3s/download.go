@@ -109,6 +109,10 @@ func downloadInstallScript(spec *spec.K3sSpec) error {
 	// Clean and construct save path for installation script
 	savePath := filepath.Clean(filepath.Join(spec.K3sScriptDir(), "k3s-install.sh"))
 
+	if _, err := os.Stat(savePath); err == nil {
+		return nil
+	}
+
 	// Download script using utility function
 	if err := utils.DownloadFile(spec.ScriptURL, savePath); err != nil {
 		return fmt.Errorf("file download failed [url=%s, path=%s]: %w", spec.ScriptURL, savePath, err)
