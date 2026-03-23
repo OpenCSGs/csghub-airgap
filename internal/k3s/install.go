@@ -1,6 +1,7 @@
 package k3s
 
 import (
+	"csghub-airgap/internal/net"
 	"csghub-airgap/internal/spec"
 	"csghub-airgap/internal/utils"
 	"fmt"
@@ -120,6 +121,27 @@ func helmInstall(spec *spec.K3sSpec) error {
 	}
 
 	_ = os.RemoveAll(filepath.Dir(srcHelmBinFile))
+
+	return nil
+}
+
+func PatchInstall(spec *spec.K3sSpec, domain string) error {
+	patchInstallScriptPath := filepath.Join(spec.K3sScriptDir(), "k3s-coredns-patch.sh")
+
+	defaultIfaceName, err := net.GetDefaultInterface()
+	if err != nil {
+		return err
+	}
+
+	ip, err := net.GetInterfaceIP(defaultIfaceName)
+	if err != nil {
+		return err
+	}
+
+	cmd := fmt.Sprintf("DOMAIN=%s TARGET_IP=%s bash %s", domain, ip, patchInstallScriptPath)
+	if err = utils.ExecCommand("/bin/bash", "-c", cmd); err != nil {
+		return err
+	}
 
 	return nil
 }

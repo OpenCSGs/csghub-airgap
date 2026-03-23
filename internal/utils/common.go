@@ -403,3 +403,26 @@ func IsZeroValue(v reflect.Value) bool {
 		return false
 	}
 }
+
+// GetNestedString retrieves a nested string value from a map[string]interface{}
+// using a sequence of keys. It safely traverses the map layer by layer.
+//
+// Parameters:
+// - m: the root map to search
+// - keys: a variadic list of keys representing the nested path
+//
+// Returns:
+// - string: the value found at the specified path if it exists and is a string
+// - bool: true if the value exists and is a string, false otherwise
+func GetNestedString(m map[string]interface{}, keys ...string) (string, bool) {
+	var current interface{} = m
+	for _, k := range keys {
+		next, ok := current.(map[string]interface{})[k]
+		if !ok {
+			return "", false
+		}
+		current = next
+	}
+	val, ok := current.(string)
+	return val, ok
+}

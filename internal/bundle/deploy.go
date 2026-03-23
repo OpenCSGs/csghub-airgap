@@ -10,6 +10,7 @@ import (
 	"csghub-airgap/internal/pack"
 	"csghub-airgap/internal/spec"
 	"csghub-airgap/internal/utils"
+	"strings"
 )
 
 func (s *Spec) Deploy() error {
@@ -17,6 +18,10 @@ func (s *Spec) Deploy() error {
 		return err
 	}
 
+	if err := pack.InstallPackages(s.DestDir); err != nil {
+		return err
+	}
+	
 	if err := kernel.SetSysctl(nil); err != nil {
 		return err
 	}
@@ -31,13 +36,11 @@ func (s *Spec) Deploy() error {
 
 	if !s.SkipLonghorn {
 		charts = append(charts, s.Longhorn)
-		if err := pack.InstallPackages(s.DestDir); err != nil {
-			return err
-		}
 	}
 
 	if !s.SkipNvdp {
 		charts = append(charts, s.Nvdp)
+
 		log.Warn("NVIDIA GPU are not included in the Airgap installation")
 	}
 
@@ -63,6 +66,20 @@ func (s *Spec) Deploy() error {
 				return err
 			}
 		}
+	}
+
+	domain, _ := utils.GetNestedString(s.Csghub.ChartOptions, "global", "gateway", "external", "domain")
+
+	// Normalize domain:
+	// - If more than 2 labels (e.g. a.b.example.com), keep last two → example.com
+	// - If 2 or fewer (e.g. example.com), keep as is
+	parts := strings.Split(domain, ".")
+	if len(parts) > 2 {
+		domain = strings.Join(parts[len(parts)-2:], ".")
+	}
+
+	if err := k3s.PatchInstall(s.K3s, domain); err != nil {
+		return err
 	}
 
 	return nil
