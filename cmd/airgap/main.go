@@ -287,7 +287,7 @@ func deployCommand() *cli.Command {
 			if sets := c.StringSlice("set"); len(sets) > 0 {
 				all := flag.ParseSetFlags(sets)
 
-				csghubOptions := flag.ExtractByPrefix(all, "csghub")
+				csghubOptions = flag.ExtractByPrefix(all, "csghub")
 				opts = append(opts, spec.WithCsghubOptions(csghubOptions))
 
 				longhornOptions := flag.ExtractByPrefix(all, "longhorn")
