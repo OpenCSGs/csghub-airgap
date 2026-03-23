@@ -27,7 +27,7 @@ func Install(spec *spec.ChartSpec) error {
 		settings.SetNamespace(namespace)
 	}
 
-	chartRef := spec.ChartRef()
+	chartRef := spec.ChartFilePath()
 	chartVersion := spec.ChartVersion
 	releaseName := spec.RepoName
 
@@ -35,7 +35,7 @@ func Install(spec *spec.ChartSpec) error {
 		return fmt.Errorf("release name must be specified")
 	}
 
-	log.Infof("Installing chart %s:%s as release %s", chartRef, chartVersion, releaseName)
+	log.Infof("Installing chart %s as release %s", chartRef, releaseName)
 
 	// Values (can be empty)
 	values := map[string]interface{}{}

@@ -27,7 +27,7 @@ func Upgrade(spec *spec.ChartSpec) error {
 		settings.SetNamespace(namespace)
 	}
 
-	chartRef := spec.ChartRef()
+	chartRef := spec.ChartFilePath()
 	chartVersion := spec.ChartVersion
 	releaseName := spec.RepoName
 
@@ -35,7 +35,7 @@ func Upgrade(spec *spec.ChartSpec) error {
 		return fmt.Errorf("release name must be specified")
 	}
 
-	log.Infof("Upgrading release %s with chart %s:%s", releaseName, chartRef, chartVersion)
+	log.Infof("Upgrading release %s with chart %s", releaseName, chartRef)
 
 	// Values (can be empty)
 	values := map[string]interface{}{}
