@@ -77,11 +77,9 @@ func NewCsghubSpec(destDir string, options map[string]interface{}) *ChartSpec {
 				"registry": map[string]interface{}{
 					"repository": "csghub",
 				},
-				"lws": map[string]interface{}{
-					"image": map[string]interface{}{
-						"manager": map[string]interface{}{
-							"repository": "opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq/lws",
-						},
+				"volcano": map[string]interface{}{
+					"basic": map[string]interface{}{
+						"image_pull_policy": "IfNotPresent",
 					},
 				},
 			},
@@ -111,7 +109,7 @@ func NewLonghornSpec(destDir string, options map[string]interface{}) *ChartSpec 
 			},
 			"defaultSettings": map[string]interface{}{
 				"defaultDataPath":                         "/var/lib/longhorn/",
-				"storageOverProvisioningPercentage":       2000, // Allow 20 times overuse
+				"storageOverProvisioningPercentage":       3000, // Allow 30 times overuse
 				"storageMinimalAvailablePercentage":       10,
 				"storageReservedPercentageForDefaultDisk": 10,
 			},
