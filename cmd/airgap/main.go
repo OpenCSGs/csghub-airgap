@@ -79,6 +79,7 @@ func createCommand() *cli.Command {
 				Name:    "longhorn-version",
 				Aliases: []string{"lv"},
 				Usage:   "Longhorn chart version",
+				Value:   "1.11.1",
 			},
 			&cli.BoolFlag{
 				Name:    "skip-longhorn",
@@ -92,6 +93,7 @@ func createCommand() *cli.Command {
 				Name:    "nvdp-version",
 				Aliases: []string{"nv"},
 				Usage:   "Nvidia device plugin version",
+				Value:   "0.19.0",
 			},
 			&cli.BoolFlag{
 				Name:    "skip-nvdp",
