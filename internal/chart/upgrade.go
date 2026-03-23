@@ -65,7 +65,6 @@ func runUpgrade(ctx context.Context, logger *logger.Logger, settings *cli.EnvSet
 	upgradeClient.DryRunOption = "none"
 	upgradeClient.Version = chartVersion
 	upgradeClient.Install = true
-	upgradeClient.Wait = true
 
 	registryClient, err := newRegistryClientTLS(
 		settings,

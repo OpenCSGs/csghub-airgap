@@ -2,11 +2,9 @@ package bundle
 
 import (
 	"csghub-airgap/internal/chart"
-	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/image"
 	"csghub-airgap/internal/k3s"
 	"csghub-airgap/internal/spec"
-	"csghub-airgap/internal/utils"
 )
 
 func (s *Spec) Create() error {
@@ -41,20 +39,14 @@ func (s *Spec) Create() error {
 			return err
 		}
 
-		manifest, err := chart.Template(c)
-		if err != nil {
-			return err
+		var opt image.ExtractOption
+		if c.RepoName == "longhorn" {
+			opt = chart.LonghornExtractOption
+		} else {
+			opt = image.ExtractOption{}
 		}
 
-		images := image.Extract(manifest)
-
-		imageSpec := &spec.ImageSpec{
-			Images:       images,
-			OutPath:      utils.NVL(s.DestDir, config.DefaultDestDir),
-			ChartName:    c.ChartName,
-			ChartVersion: c.ChartVersion,
-		}
-		if err = image.Export(imageSpec); err != nil {
+		if err := chart.Image(c, opt); err != nil {
 			return err
 		}
 	}

@@ -65,7 +65,6 @@ func runInstall(ctx context.Context, logger *logger.Logger, settings *cli.EnvSet
 	installClient.Namespace = settings.Namespace()
 	installClient.Version = chartVersion
 	installClient.CreateNamespace = true
-	installClient.Wait = true
 
 	registryClient, err := newRegistryClientTLS(
 		settings,
