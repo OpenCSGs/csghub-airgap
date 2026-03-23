@@ -111,7 +111,7 @@ func NewLonghornSpec(destDir string, options map[string]interface{}) *ChartSpec 
 			},
 			"defaultSettings": map[string]interface{}{
 				"defaultDataPath":                         "/var/lib/longhorn/",
-				"storageOverProvisioningPercentage":       10,
+				"storageOverProvisioningPercentage":       2000, // Allow 20 times overuse
 				"storageMinimalAvailablePercentage":       10,
 				"storageReservedPercentageForDefaultDisk": 10,
 			},

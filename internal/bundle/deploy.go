@@ -5,12 +5,17 @@ import (
 	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/image"
 	"csghub-airgap/internal/k3s"
+	"csghub-airgap/internal/kernel"
 	"csghub-airgap/internal/spec"
 	"csghub-airgap/internal/utils"
 )
 
 func (s *Spec) Deploy() error {
 	if err := checkArch(); err != nil {
+		return err
+	}
+
+	if err := kernel.SetSysctl(nil); err != nil {
 		return err
 	}
 
