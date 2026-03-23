@@ -20,11 +20,12 @@ type ExtractRule struct {
 
 type ExtractOption struct {
 	FromValues bool
+	FromKind   string
 	Rules      []ExtractRule
 }
 
 // ExtractAllImages Merge chart images + values images, remove duplicates
-func ExtractAllImages(manifest string, values []byte, opt ExtractOption) []string {
+func ExtractAllImages(manifest string, values []string, opt ExtractOption) []string {
 	set := map[string]struct{}{}
 
 	// 1. Images already in YAML
@@ -32,16 +33,18 @@ func ExtractAllImages(manifest string, values []byte, opt ExtractOption) []strin
 		set[img] = struct{}{}
 	}
 
-	var valuesMap map[string]interface{}
-	if err := yaml.Unmarshal(values, &valuesMap); err != nil {
-		log.Fatalf("yaml parse error: %v", err)
-	}
+	for _, value := range values {
+		var valuesMap map[string]interface{}
+		if err := yaml.Unmarshal([]byte(value), &valuesMap); err != nil {
+			log.Fatalf("yaml parse error: %v", err)
+		}
 
-	// 2. Extract images from values.yaml
-	if opt.FromValues {
-		imgs := ExtractImagesFromValuesGeneric(valuesMap, opt.Rules)
-		for _, img := range imgs {
-			set[img] = struct{}{}
+		// 2. Extract images from values.yaml
+		if opt.FromValues || opt.FromKind != "" {
+			imgs := ExtractImagesFromGeneric(valuesMap, opt.Rules)
+			for _, img := range imgs {
+				set[img] = struct{}{}
+			}
 		}
 	}
 
@@ -54,35 +57,53 @@ func ExtractAllImages(manifest string, values []byte, opt ExtractOption) []strin
 	return result
 }
 
-// ExtractImagesFromValuesGeneric Extract images from values.yaml according to rules
-func ExtractImagesFromValuesGeneric(values map[string]interface{}, rules []ExtractRule) []string {
+// ExtractImagesFromGeneric Extract images from values.yaml according to rules
+func ExtractImagesFromGeneric(values map[string]interface{}, rules []ExtractRule) []string {
 	var result []string
 	for _, rule := range rules {
 		items := Walk(values, strings.Split(rule.Path, "."))
+		tmpl, err := template.New("").Parse(rule.Template)
+		if err != nil {
+			log.Warnf("parse template error for rule %s: %v", rule.Name, err)
+			continue
+		}
 		for _, item := range items {
-			m, ok := item.(map[string]interface{})
-			if !ok {
-				continue
+			switch v := item.(type) {
+			case string:
+				img := strings.TrimSpace(v)
+				if img == "" {
+					continue
+				}
+				if rule.ReplaceFunc != nil {
+					img = rule.ReplaceFunc(img)
+				}
+				result = append(result, img)
+			case map[string]interface{}:
+				var buf bytes.Buffer
+				err = tmpl.Execute(&buf, v)
+				if err != nil {
+					log.Warnf("template execute error for rule %s: %v", rule.Name, err)
+					continue
+				}
+				img := strings.TrimSpace(buf.String())
+				if img == "" {
+					continue
+				}
+				if rule.ReplaceFunc != nil {
+					img = rule.ReplaceFunc(img)
+				}
+				result = append(result, img)
 			}
-			tmpl, _ := template.New("").Parse(rule.Template)
-			var buf bytes.Buffer
-			_ = tmpl.Execute(&buf, m)
-
-			img := buf.String()
-			if rule.ReplaceFunc != nil {
-				img = rule.ReplaceFunc(img)
-			}
-			result = append(result, img)
-
 		}
 	}
+
 	return result
 }
 
 // Extract all images from Manifests
 func Extract(manifest string) []string {
-	imgRegex1 := `(?m)^[^#]*\s*image:\s*"?([a-z0-9_\-./:@]+(@sha256:[a-f0-9]+)?)"?\s*$`
-	imgRegex2 := regexp.MustCompile(`([a-z0-9\.-]+(:[0-9]+)?/)?[a-z0-9_\-./]+:[a-z0-9_\-\.]+`)
+	imgRegex1 := `image:\s*["']?([a-zA-Z0-9./:-]+(?:@[a-f0-9]+)?)["']?`
+	imgRegex2 := regexp.MustCompile(`^[a-zA-Z0-9\.-]+(:[0-9]+)?/[a-zA-Z0-9_\-./]+(:[a-zA-Z0-9_\-\.]+|@sha256:[a-f0-9]{64})$`)
 
 	imageSet := make(map[string]struct{})
 	for _, img := range utils.ExtractByRegex(manifest, imgRegex1) {

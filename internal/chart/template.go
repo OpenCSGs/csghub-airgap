@@ -44,5 +44,11 @@ func Template(spec *spec.ChartSpec) (string, error) {
 		return "", fmt.Errorf("failed to render chart: %w", err)
 	}
 
-	return release.Manifest, nil
+	manifest := release.Manifest
+
+	for _, hook := range release.Hooks {
+		manifest += "\n---\n" + hook.Manifest
+	}
+
+	return manifest, nil
 }

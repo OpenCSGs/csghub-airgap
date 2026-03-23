@@ -45,10 +45,12 @@ func (s *Spec) Create() error {
 		}
 
 		var opt image.ExtractOption
-		if c.RepoName == "longhorn" {
+		switch c.RepoName {
+		case "csghub":
+			opt = chart.CsghubExtractOption
+		case "longhorn":
 			opt = chart.LonghornExtractOption
-		} else {
-			opt = image.ExtractOption{}
+		default:
 		}
 
 		if err := chart.Image(c, opt); err != nil {
