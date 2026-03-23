@@ -4,11 +4,16 @@ import (
 	"csghub-airgap/internal/chart"
 	"csghub-airgap/internal/image"
 	"csghub-airgap/internal/k3s"
+	"csghub-airgap/internal/pack"
 	"csghub-airgap/internal/spec"
 )
 
 func (s *Spec) Create() error {
 	if err := checkArch(); err != nil {
+		return err
+	}
+
+	if err := pack.PreparePackages(s.DestDir); err != nil {
 		return err
 	}
 

@@ -6,6 +6,8 @@ import (
 	"csghub-airgap/internal/image"
 	"csghub-airgap/internal/k3s"
 	"csghub-airgap/internal/kernel"
+	"csghub-airgap/internal/log"
+	"csghub-airgap/internal/pack"
 	"csghub-airgap/internal/spec"
 	"csghub-airgap/internal/utils"
 )
@@ -29,10 +31,14 @@ func (s *Spec) Deploy() error {
 
 	if !s.SkipLonghorn {
 		charts = append(charts, s.Longhorn)
+		if err := pack.InstallPackages(s.DestDir); err != nil {
+			return err
+		}
 	}
 
 	if !s.SkipNvdp {
 		charts = append(charts, s.Nvdp)
+		log.Warn("NVIDIA GPU are not included in the Airgap installation")
 	}
 
 	charts = append(charts, s.Csghub)

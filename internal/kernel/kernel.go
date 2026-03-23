@@ -19,7 +19,7 @@ var (
 // and applies the changes immediately using "sysctl -p".
 // This ensures the kernel parameters persist across reboots and take effect immediately.
 func SetSysctl(params map[string]string) error {
-	log.Infof("Setting sysctl kernel params: %v", params)
+	log.Info("Setting sysctl kernel params")
 
 	// Merge default parameters with provided params, giving priority to params.
 	mergedParams := make(map[string]string)
