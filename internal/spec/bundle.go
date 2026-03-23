@@ -104,7 +104,7 @@ func NewLonghornSpec(destDir string, options map[string]interface{}) *ChartSpec 
 		OutPath:      utils.NVL(destDir, config.DefaultDestDir),
 		ChartOptions: utils.NVLMap(options, map[string]interface{}{
 			"global": map[string]interface{}{
-				"imageRegistry": "docker.1ms.run",
+				"imageRegistry": "opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq",
 			},
 			"persistence": map[string]interface{}{
 				"backupTargetName": "",
