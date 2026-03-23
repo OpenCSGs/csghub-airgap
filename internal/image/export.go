@@ -3,6 +3,7 @@ package image
 import (
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
+	"fmt"
 	"os"
 	"time"
 
@@ -38,7 +39,7 @@ func Export(spec *spec.ImageSpec) error {
 	}
 
 	if err := crane.MultiSave(imgMap, imageFilePath); err != nil {
-		return err
+		return fmt.Errorf("error saving images %s: %w", spec.Images, err)
 	}
 
 	log.Infof("Exported images to %s (elapsed %.3fs)", spec.ImageFileName(), time.Since(pullStart).Seconds())
