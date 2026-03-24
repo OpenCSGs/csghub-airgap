@@ -21,7 +21,7 @@ func (s *Spec) Deploy() error {
 	if err := pack.InstallPackages(s.DestDir); err != nil {
 		return err
 	}
-	
+
 	if err := kernel.SetSysctl(nil); err != nil {
 		return err
 	}
@@ -81,6 +81,8 @@ func (s *Spec) Deploy() error {
 	if err := k3s.PatchInstall(s.K3s, domain); err != nil {
 		return err
 	}
+
+	log.Warn("Use 'kubectl get pods -n csghub' to check if the applications are ready")
 
 	return nil
 }
