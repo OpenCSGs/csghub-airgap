@@ -295,6 +295,11 @@ func deployCommand() *cli.Command {
 			opts = append(opts, spec.WithLonghornSkip(skipLonghorn))
 			if !skipLonghorn {
 				csghubOptions = map[string]interface{}{
+					"global": map[string]interface{}{
+						"persistence": map[string]interface{}{
+							"storageClass": "local-path",
+						},
+					},
 					"dataflow": map[string]interface{}{
 						"dataflow": map[string]interface{}{
 							"persistence": map[string]interface{}{
