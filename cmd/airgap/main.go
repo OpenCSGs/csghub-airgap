@@ -291,7 +291,21 @@ func deployCommand() *cli.Command {
 			opts = append(opts, spec.WithCsghubOptions(csghubOptions))
 
 			// ===== Longhorn =====
-			opts = append(opts, spec.WithLonghornSkip(c.Bool("skip-longhorn")))
+			skipLonghorn := c.Bool("skip-longhorn")
+			opts = append(opts, spec.WithLonghornSkip(skipLonghorn))
+			if !skipLonghorn {
+				csghubOptions = map[string]interface{}{
+					"dataflow": map[string]interface{}{
+						"dataflow": map[string]interface{}{
+							"persistence": map[string]interface{}{
+								"storageClass": "longhorn",
+							},
+						},
+					},
+				}
+
+				opts = append(opts, spec.WithCsghubOptions(csghubOptions))
+			}
 
 			// ===== NVDP =====
 			opts = append(opts, spec.WithNvdpSkip(c.Bool("skip-nvdp")))
