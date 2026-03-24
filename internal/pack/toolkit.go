@@ -83,7 +83,7 @@ func PreparePackages(destDir string) error {
 		}
 
 		// Download NVIDIA Container Toolkit packages to packageDir with dependencies
-		version := "1.19.0-1"
+		version := "1.18.0-1"
 		packages := []string{
 			fmt.Sprintf("nvidia-container-toolkit=%s", version),
 			fmt.Sprintf("nvidia-container-toolkit-base=%s", version),
@@ -116,7 +116,7 @@ func PreparePackages(destDir string) error {
 		}
 
 		// Download NVIDIA container toolkit packages to packageDir with dependencies
-		version := "1.19.0-1"
+		version := "1.18.0-1"
 		packages := []string{
 			fmt.Sprintf("nvidia-container-toolkit-%s", version),
 			fmt.Sprintf("nvidia-container-toolkit-base-%s", version),
@@ -149,7 +149,7 @@ func PreparePackages(destDir string) error {
 			log.Warnf("Failed to add zypper repositories for nvidia container toolkit: %v", err)
 		}
 
-		version := "1.19.0-1"
+		version := "1.18.0-1"
 		packages := []string{
 			fmt.Sprintf("nvidia-container-toolkit-%s", version),
 			fmt.Sprintf("nvidia-container-toolkit-base-%s", version),
