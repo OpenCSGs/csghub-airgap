@@ -5,6 +5,7 @@ import (
 	"csghub-airgap/internal/utils"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -21,12 +22,10 @@ func PreparePackages(destDir string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get absolute path of destDir %s: %v", destDir, err)
 	}
-	packageDir := filepath.Join(absDestDir, "packages")
 
-	// Ensure apt cache subdirectories exist for apt-get -d install (archives/partial)
-	aptArchivesPartial := filepath.Join(packageDir, "archives", "partial")
-	if err := os.MkdirAll(aptArchivesPartial, 0755); err != nil {
-		return fmt.Errorf("failed to create apt cache subdirectory %s: %v", aptArchivesPartial, err)
+	packageDir := filepath.Join(absDestDir, "packages")
+	if err := os.MkdirAll(packageDir, 0755); err != nil {
+		return fmt.Errorf("failed to create packageDir %s: %v", packageDir, err)
 	}
 
 	// Detect Linux distribution from /etc/os-release
@@ -53,6 +52,12 @@ func PreparePackages(destDir string) error {
 	switch id {
 	// Ubuntu / Debian
 	case "ubuntu", "debian":
+		// Ensure apt cache subdirectories exist for apt-get -d install (archives/partial)
+		aptArchivesPartial := filepath.Join(packageDir, "archives", "partial")
+		if err := os.MkdirAll(aptArchivesPartial, 0755); err != nil {
+			return fmt.Errorf("failed to create apt cache subdirectory %s: %v", aptArchivesPartial, err)
+		}
+
 		// Install prerequisites
 		if err := utils.ExecCommand("apt-get", "update"); err != nil {
 			return err
@@ -93,8 +98,13 @@ func PreparePackages(destDir string) error {
 
 	// RHEL / CentOS / Rocky / AlmaLinux / Fedora
 	case "rhel", "centos", "almalinux", "fedora":
+		pkgMgr := "dnf"
+		if _, err := exec.LookPath("dnf"); err != nil {
+			pkgMgr = "yum"
+		}
 		// Install prerequisites including nfs-utils
-		if err := utils.ExecCommand("dnf", "-y", "install", "curl", "ca-certificates", "jq", "nfs-utils"); err != nil {
+		cmd := fmt.Sprintf("%s install --downloadonly --downloaddir=%s -y curl ca-certificates jq nfs-utils", pkgMgr, packageDir)
+		if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
 			return err
 		}
 
@@ -113,8 +123,16 @@ func PreparePackages(destDir string) error {
 			fmt.Sprintf("libnvidia-container1-%s", version),
 		}
 		for _, pkg := range packages {
-			if err := utils.ExecCommand("dnf", "download", "--resolve", "--alldeps", "--destdir", packageDir, pkg); err != nil {
-				return err
+			if pkgMgr == "dnf" {
+				if err := utils.ExecCommand("dnf", "download", "--resolve", "--alldeps", "--destdir", packageDir, pkg); err != nil {
+					return err
+				}
+			} else {
+				// yum fallback
+				cmd := fmt.Sprintf("yum install --downloadonly --downloaddir=%s -y %s", packageDir, pkg)
+				if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -206,10 +224,19 @@ func InstallPackages(destDir string) error {
 
 	// RHEL / CentOS / Fedora
 	case "rhel", "centos", "almalinux", "fedora":
-		// Install all .rpm files from packageDir using dnf
-		cmd := fmt.Sprintf("dnf install -y %s", filepath.Join(packageDir, "*.rpm"))
+		pkgMgr := "dnf"
+		if _, err := exec.LookPath("dnf"); err != nil {
+			pkgMgr = "yum"
+		}
+		// Install all .rpm files from packageDir using dnf or yum
+		var cmd string
+		if pkgMgr == "dnf" {
+			cmd = fmt.Sprintf("dnf install -y %s", filepath.Join(packageDir, "*.rpm"))
+		} else {
+			cmd = fmt.Sprintf("yum install -y %s", filepath.Join(packageDir, "*.rpm"))
+		}
 		if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
-			return fmt.Errorf("dnf install failed: %w", err)
+			return fmt.Errorf("%s install failed: %w", pkgMgr, err)
 		}
 
 	// OpenSUSE / SLE
