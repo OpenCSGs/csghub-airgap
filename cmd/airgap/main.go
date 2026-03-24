@@ -15,7 +15,7 @@ import (
 func main() {
 	app := &cli.App{
 		Name:    "csghub-airgap",
-		Usage:   "CSGHub offline bundle builder and installer",
+		Usage:   "Create or Deploy CSGHub with airgap bundle",
 		Version: "1.17.0",
 		Commands: []*cli.Command{
 			createCommand(),
@@ -107,8 +107,17 @@ func createCommand() *cli.Command {
 				Name:  "set",
 				Usage: "Set chart values (e.g. csghub.global.image.registry=xxx)",
 			},
+			&cli.BoolFlag{
+				Name:    "debug",
+				Aliases: []string{"d"},
+				Usage:   "Turn on debug mode",
+				Value:   false,
+			},
 		},
 		Action: func(c *cli.Context) error {
+			debug := c.Bool("debug")
+			log.Init(debug)
+
 			var opts []spec.BundleSpecOption
 
 			opts = append(opts, spec.WithDestDir(c.String("output")))
@@ -319,32 +328,28 @@ func deployCommand() *cli.Command {
 func cleanupCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "cleanup",
-		Usage: "Cleanup csghub deployment",
+		Usage: "Cleanup k3s and all services",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
-				Name:  "remove-k3s",
-				Usage: "remove k3s cluster",
-			},
-			&cli.BoolFlag{
-				Name:  "remove-longhorn",
-				Usage: "remove longhorn",
+				Name:    "yes",
+				Aliases: []string{"y"},
+				Usage:   "Skip confirmation and run cleanup directly",
+				Value:   false,
 			},
 		},
 		Action: func(c *cli.Context) error {
-
-			fmt.Println("Cleaning up deployment")
-
-			if c.Bool("remove-longhorn") {
-				fmt.Println("Removing longhorn")
+			yes := c.Bool("yes")
+			if !yes {
+				fmt.Print("This will delete all CSGHub resources. Continue? (y/N): ")
+				var input string
+				_, err := fmt.Scanln(&input)
+				if err != nil || (input != "y" && input != "Y") {
+					fmt.Println("Cleanup aborted.")
+					return nil
+				}
 			}
 
-			if c.Bool("remove-k3s") {
-				fmt.Println("Removing k3s")
-			}
-
-			// TODO: cleanup logic
-
-			return nil
+			return bundle.Cleanup()
 		},
 	}
 }
