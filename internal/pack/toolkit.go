@@ -65,7 +65,7 @@ func PreparePackages(destDir string) error {
 		}
 		// Download prerequisites packages to packageDir with dependencies
 		if err := utils.ExecCommand("apt-get", "-y", "-d", "install", "-o", fmt.Sprintf("dir::cache=%s", packageDir),
-			"--download-only", "--reinstall", "--no-install-recommends", "ca-certificates", "curl", "gnupg2", "nfs-common"); err != nil {
+			"--download-only", "--reinstall", "--no-install-recommends", "ca-certificates", "curl", "gnupg2", "nfs-common", "open-iscsi"); err != nil {
 			log.Warnf("Failed to download apt cache packages to %s: %v", packageDir, err)
 		}
 
@@ -104,7 +104,7 @@ func PreparePackages(destDir string) error {
 			pkgMgr = "yum"
 		}
 		// Install prerequisites including nfs-utils
-		cmd := fmt.Sprintf("%s install --downloadonly --downloaddir=%s -y curl ca-certificates nfs-utils", pkgMgr, packageDir)
+		cmd := fmt.Sprintf("%s install --downloadonly --downloaddir=%s -y curl ca-certificates nfs-utils iscsi-initiator-utils", pkgMgr, packageDir)
 		if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
 			log.Warnf("Failed to download dependencies packages: %v", err)
 		}
@@ -139,8 +139,8 @@ func PreparePackages(destDir string) error {
 
 	// OpenSUSE / SLE
 	case "opensuse-leap", "sles", "suse":
-		// Install prerequisites including nfs-client
-		if err := utils.ExecCommand("zypper", "install", "-y", "nfs-client"); err != nil {
+		// Install prerequisites including nfs-client and open-iscsi
+		if err := utils.ExecCommand("zypper", "install", "-y", "nfs-client", "open-iscsi"); err != nil {
 			log.Warnf("Failed to install dependencies: %v", err)
 		}
 
@@ -237,7 +237,7 @@ func InstallPackages(destDir string) error {
 			cmd = fmt.Sprintf("yum install -y %s", filepath.Join(packageDir, "*.rpm"))
 		}
 		if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
-			return fmt.Errorf("%s install failed: %w", pkgMgr, err)
+			log.Warnf("Failed to install dependencies for package %s: %v. Skipping...", pkgMgr, err)
 		}
 
 	// OpenSUSE / SLE
@@ -245,7 +245,7 @@ func InstallPackages(destDir string) error {
 		// Install all .rpm files from packageDir using zypper
 		cmd := fmt.Sprintf("zypper --non-interactive install -y %s", filepath.Join(packageDir, "*.rpm"))
 		if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
-			return fmt.Errorf("zypper install failed: %w", err)
+			log.Warnf("Failed to install dependencies for package %s: %v. Skipping...", cmd, err)
 		}
 
 	default:
