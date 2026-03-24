@@ -3,6 +3,7 @@ package chart
 import (
 	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/image"
+	"csghub-airgap/internal/log"
 	is "csghub-airgap/internal/spec"
 	"csghub-airgap/internal/utils"
 	"strings"
@@ -68,6 +69,8 @@ func Image(spec *is.ChartSpec, opts image.ExtractOption) error {
 	}
 
 	images := image.ExtractAllImages(manifest, yamlResource, opts)
+
+	log.Debugf("Images pulled: %v", images)
 
 	imageSpec := &is.ImageSpec{
 		Images:       images,

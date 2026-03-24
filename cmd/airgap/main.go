@@ -171,10 +171,14 @@ func createCommand() *cli.Command {
 				opts = append(opts, spec.WithNvdpOptions(nvdpOptions))
 			}
 
+			log.Debugf("Received options: %v", opts)
+
 			bs, err := spec.NewBundleSpec(opts...)
 			if err != nil {
 				return err
 			}
+
+			log.Debugf("Created bundle spec: %v", bs)
 
 			bundleSpec := bundle.NewFromSpec(bs)
 			if err = bundleSpec.Create(); err != nil {
@@ -306,15 +310,21 @@ func deployCommand() *cli.Command {
 				opts = append(opts, spec.WithNvdpOptions(nvdpOptions))
 			}
 
+			log.Debugf("Received options: %v", opts)
+
 			bs, err := spec.NewBundleSpec(opts...)
 			if err != nil {
 				return err
 			}
 
+			log.Debugf("Created bundle spec: %v", bs)
+
 			bundleSpec, err := bundle.LoadFromManifest(inputDir, bs)
 			if err != nil {
 				return fmt.Errorf("failed to load bundle manifest: %w", err)
 			}
+
+			log.Debugf("Loaded bundle spec: %v", bundleSpec)
 
 			if err = bundleSpec.Deploy(); err != nil {
 				return fmt.Errorf("%w", err)

@@ -4,6 +4,7 @@ import (
 	"csghub-airgap/internal/chart"
 	"csghub-airgap/internal/image"
 	"csghub-airgap/internal/k3s"
+	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/pack"
 	"csghub-airgap/internal/spec"
 )
@@ -35,10 +36,14 @@ func (s *Spec) Create() error {
 
 	charts = append(charts, s.Csghub)
 
+	log.Debugf("Charts for offline: %v", charts)
+
 	for _, c := range charts {
 		if c.ChartVersion == "" {
 			c.ChartVersion = chart.LastVersion(c).String()
 		}
+
+		log.Debugf("Processing chart %s with version %v", c.ChartName, c.ChartVersion)
 
 		if err := chart.Pull(c); err != nil {
 			return err
