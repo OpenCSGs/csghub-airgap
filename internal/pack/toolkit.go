@@ -1,7 +1,6 @@
 package pack
 
 import (
-	"bufio"
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/utils"
 	"fmt"
@@ -12,7 +11,15 @@ import (
 	"strings"
 )
 
-// PreparePackages sets up NVIDIA container toolkit repository depending on the Linux distro
+const NvidiaContainerToolkitVersion = "1.18.0-1"
+
+var packages = []string{
+	fmt.Sprintf("nvidia-container-toolkit=%s", NvidiaContainerToolkitVersion),
+	fmt.Sprintf("nvidia-container-toolkit-base=%s", NvidiaContainerToolkitVersion),
+	fmt.Sprintf("libnvidia-container-tools=%s", NvidiaContainerToolkitVersion),
+	fmt.Sprintf("libnvidia-container1=%s", NvidiaContainerToolkitVersion),
+}
+
 // PreparePackages sets up NVIDIA container toolkit repository depending on the Linux distro
 func PreparePackages(destDir string) error {
 	if runtime.GOOS != "linux" {
@@ -29,22 +36,8 @@ func PreparePackages(destDir string) error {
 		return fmt.Errorf("failed to create packageDir %s: %v", packageDir, err)
 	}
 
-	f, err := os.Open("/etc/os-release")
+	id, err := utils.GetOSID()
 	if err != nil {
-		return fmt.Errorf("failed to open /etc/os-release: %w", err)
-	}
-	defer f.Close()
-
-	var id string
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.HasPrefix(line, "ID=") {
-			id = strings.Trim(strings.TrimPrefix(line, "ID="), `"`)
-			break
-		}
-	}
-	if err := scanner.Err(); err != nil {
 		return err
 	}
 
@@ -55,22 +48,17 @@ func PreparePackages(destDir string) error {
 		}
 
 		prereqs := []string{"ca-certificates", "curl", "gnupg2", "nfs-common", "open-iscsi"}
-		for _, pkg := range prereqs {
-			if err := utils.ExecCommand(
-				"bash",
-				"-c",
-				fmt.Sprintf(
-					"cd %s && apt-get download -o APT::Sandbox::User=root %s",
-					packageDir,
-					pkg,
-				),
-			); err != nil {
-				log.Warnf(
-					"Failed to download prerequisite package %s: %v",
-					pkg,
-					err,
-				)
-			}
+		prereqStr := strings.Join(prereqs, " ")
+		cmd := fmt.Sprintf(
+			"apt-get install --download-only --no-install-recommends -y -o APT::Sandbox::User=root "+
+				"-o Dir::Cache=%s -o Dir::Cache::archives=%s %s",
+			packageDir,
+			packageDir,
+			prereqStr,
+		)
+
+		if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
+			log.Warnf("Failed to download prerequisite packages and dependencies: %v", err)
 		}
 
 		if err := utils.ExecCommand(
@@ -94,79 +82,36 @@ func PreparePackages(destDir string) error {
 			log.Warnf("Failed to update apt cache after adding NVIDIA repo: %v", err)
 		}
 
-		version := "1.18.2-1"
-		packages := []string{
-			fmt.Sprintf("nvidia-container-toolkit=%s", version),
-			fmt.Sprintf("nvidia-container-toolkit-base=%s", version),
-			fmt.Sprintf("libnvidia-container-tools=%s", version),
-			fmt.Sprintf("libnvidia-container1=%s", version),
-		}
-		for _, pkg := range packages {
-			if err := utils.ExecCommand(
-				"bash",
-				"-c",
-				fmt.Sprintf(
-					"cd %s && apt-get download -o APT::Sandbox::User=root %s",
-					packageDir,
-					pkg,
-				),
-			); err != nil {
-				log.Warnf(
-					"Failed to download NVIDIA package %s: %v",
-					pkg,
-					err,
-				)
-			}
+		pkgStr := strings.Join(packages, " ")
+		cmd = fmt.Sprintf(
+			"apt-get install --download-only --no-install-recommends -y -o APT::Sandbox::User=root "+
+				"-o Dir::Cache=%s -o Dir::Cache::archives=%s %s",
+			packageDir,
+			packageDir,
+			pkgStr,
+		)
+
+		if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
+			log.Warnf("Failed to download NVIDIA packages and dependencies: %v", err)
 		}
 
 	case "rhel", "centos", "almalinux", "fedora":
 		pkgMgr := "dnf"
-		useYumDownloader := false
 		if _, err := exec.LookPath("dnf"); err != nil {
 			pkgMgr = "yum"
-			useYumDownloader = true
-		}
-
-		// Ensure yum-utils is available for yumdownloader
-		if useYumDownloader {
-			if err := utils.ExecCommand(
-				"bash", "-c",
-				fmt.Sprintf("yum install --downloadonly --downloaddir=%s -y yum-utils", packageDir),
-			); err != nil {
-				log.Warnf("Failed to download yum-utils: %v", err)
-			}
 		}
 
 		prereqs := []string{"curl", "ca-certificates", "nfs-utils", "iscsi-initiator-utils"}
-		for _, pkg := range prereqs {
-			if pkgMgr == "dnf" {
-				if err := utils.ExecCommand(
-					"dnf",
-					"download",
-					"--resolve",
-					"--alldeps",
-					"--destdir", packageDir,
-					pkg,
-				); err != nil {
-					log.Warnf(
-						"Failed to download prerequisite package %s: %v",
-						pkg,
-						err,
-					)
-				}
-			} else {
-				cmd := fmt.Sprintf(
-					"yumdownloader --resolve --destdir=%s %s",
-					packageDir,
-					pkg,
-				)
-				if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
-					log.Warnf(
-						"Failed to download prerequisite package %s: %v",
-						pkg,
-						err,
-					)
-				}
+		prereqStr := strings.Join(prereqs, " ")
+		if pkgMgr == "dnf" {
+			cmd := fmt.Sprintf("dnf download --resolve --alldeps --destdir=%s %s", packageDir, prereqStr)
+			if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
+				log.Warnf("Failed to download prerequisite packages via dnf: %v", err)
+			}
+		} else {
+			cmd := fmt.Sprintf("yum install --downloadonly --downloaddir=%s -y %s", packageDir, prereqStr)
+			if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
+				log.Warnf("Failed to download prerequisite packages via yum: %v", err)
 			}
 		}
 
@@ -178,60 +123,30 @@ func PreparePackages(destDir string) error {
 			log.Warnf("Failed to add yum repositories for nvidia container toolkit: %v", err)
 		}
 
-		version := "1.18.0-1"
-		packages := []string{
-			fmt.Sprintf("nvidia-container-toolkit-%s", version),
-			fmt.Sprintf("nvidia-container-toolkit-base-%s", version),
-			fmt.Sprintf("libnvidia-container-tools-%s", version),
-			fmt.Sprintf("libnvidia-container1-%s", version),
-		}
-		for _, pkg := range packages {
-			if pkgMgr == "dnf" {
-				if err := utils.ExecCommand(
-					"dnf",
-					"download",
-					"--resolve",
-					"--alldeps",
-					"--destdir", packageDir,
-					pkg,
-				); err != nil {
-					log.Warnf(
-						"Failed to download dependencies for package %s: %v. Skipping...",
-						pkg,
-						err,
-					)
-				}
-			} else {
-				cmd := fmt.Sprintf(
-					"yum install --downloadonly --downloaddir=%s -y %s",
-					packageDir,
-					pkg,
-				)
-				if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
-					log.Warnf(
-						"Failed to download dependencies for package %s: %v. Skipping...",
-						pkg,
-						err,
-					)
-				}
+		pkgStr := strings.ReplaceAll(strings.Join(packages, " "), "=", "-")
+		if pkgMgr == "dnf" {
+			cmd := fmt.Sprintf("dnf download --resolve --alldeps --destdir=%s %s", packageDir, pkgStr)
+			if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
+				log.Warnf("Failed to download NVIDIA packages via dnf: %v", err)
+			}
+		} else {
+			cmd := fmt.Sprintf("yum install --downloadonly --downloaddir=%s -y %s", packageDir, pkgStr)
+			if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
+				log.Warnf("Failed to download NVIDIA packages via yum: %v", err)
 			}
 		}
 
 	case "opensuse-leap", "sles", "suse":
 		prereqs := []string{"nfs-client", "open-iscsi"}
-		for _, pkg := range prereqs {
-			if err := utils.ExecCommand(
-				"zypper",
-				"--non-interactive",
-				"download",
-				pkg,
-			); err != nil {
-				log.Warnf(
-					"Failed to download prerequisite package %s: %v",
-					pkg,
-					err,
-				)
-			}
+		prereqStr := strings.Join(prereqs, " ")
+
+		cmd := fmt.Sprintf(
+			"zypper --non-interactive install --download-only --auto-agree-with-licenses --download-in-advance --no-recommends --pkg-cache-dir %s %s",
+			packageDir,
+			prereqStr,
+		)
+		if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
+			log.Warnf("Failed to download prerequisite packages via zypper: %v", err)
 		}
 
 		if err := utils.ExecCommand(
@@ -239,6 +154,7 @@ func PreparePackages(destDir string) error {
 			"ar",
 			"-f",
 			"https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo",
+			"nvidia",
 		); err != nil {
 			log.Warnf(
 				"Failed to add zypper repositories for nvidia container toolkit: %v",
@@ -246,26 +162,14 @@ func PreparePackages(destDir string) error {
 			)
 		}
 
-		version := "1.18.2-1"
-		packages := []string{
-			fmt.Sprintf("nvidia-container-toolkit-%s", version),
-			fmt.Sprintf("nvidia-container-toolkit-base-%s", version),
-			fmt.Sprintf("libnvidia-container-tools-%s", version),
-			fmt.Sprintf("libnvidia-container1-%s", version),
-		}
-		for _, pkg := range packages {
-			cmd := fmt.Sprintf(
-				"zypper --non-interactive install --download-only --auto-agree-with-licenses --download-in-advance --no-recommends -y --pkg-cache-dir %s %s",
-				packageDir,
-				pkg,
-			)
-			if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
-				log.Warnf(
-					"Failed to install dependencies for package %s: %v. Skipping...",
-					pkg,
-					err,
-				)
-			}
+		pkgStr := strings.ReplaceAll(strings.Join(packages, " "), "=", "-")
+		cmd = fmt.Sprintf(
+			"zypper --non-interactive install --download-only --auto-agree-with-licenses --download-in-advance --no-recommends --pkg-cache-dir %s %s",
+			packageDir,
+			pkgStr,
+		)
+		if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
+			log.Warnf("Failed to download NVIDIA packages via zypper: %v", err)
 		}
 
 	default:
@@ -279,7 +183,6 @@ func PreparePackages(destDir string) error {
 // It detects the OS, finds the package directory, and installs the packages using the appropriate package manager.
 func InstallPackages(destDir string) error {
 	if runtime.GOOS != "linux" {
-		// Non-Linux OS, nothing to do
 		return nil
 	}
 
@@ -290,42 +193,18 @@ func InstallPackages(destDir string) error {
 	}
 	packageDir := filepath.Join(absDestDir, "packages")
 
-	// Detect Linux distribution from /etc/os-release (same as PreparePackages)
-	f, err := os.Open("/etc/os-release")
+	id, err := utils.GetOSID()
 	if err != nil {
-		return fmt.Errorf("failed to open /etc/os-release: %w", err)
-	}
-	defer f.Close()
-
-	var id string
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.HasPrefix(line, "ID=") {
-			id = strings.Trim(strings.TrimPrefix(line, "ID="), `"`)
-			break
-		}
-	}
-	if err := scanner.Err(); err != nil {
 		return err
 	}
 
 	switch id {
 	// Debian / Ubuntu
 	case "ubuntu", "debian":
-		// Install all .deb files from packageDir/archives using dpkg
-		archivesDir := filepath.Join(packageDir, "archives")
 		// Use dpkg -i to install all .deb files at once
-		cmd := fmt.Sprintf("apt install -y %s", filepath.Join(archivesDir, "*.deb"))
+		cmd := fmt.Sprintf("dpkg -i %s/*.deb", packageDir)
 		if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
-			// dpkg -i may fail due to missing dependencies, so we proceed to fix them below
-			// Return error only if apt-get -f install fails
-			// But log the error for dpkg -i
-			fmt.Fprintf(os.Stderr, "warning: apt install failed: %v\n", err)
-		}
-		// Fix broken dependencies
-		if err := utils.ExecCommand("bash", "-c", "apt-get -f install -y"); err != nil {
-			return fmt.Errorf("apt-get -f install failed: %w", err)
+			log.Warnf("Failed to install packages via dpkg: %v", err)
 		}
 
 	// RHEL / CentOS / Fedora
@@ -335,11 +214,12 @@ func InstallPackages(destDir string) error {
 			pkgMgr = "yum"
 		}
 		// Install all .rpm files from packageDir using dnf or yum
+		rpmFiles := filepath.Join(packageDir, "*.rpm")
 		var cmd string
 		if pkgMgr == "dnf" {
-			cmd = fmt.Sprintf("dnf install -y %s", filepath.Join(packageDir, "*.rpm"))
+			cmd = fmt.Sprintf("%s install -y --disablerepo='*' %s", pkgMgr, rpmFiles)
 		} else {
-			cmd = fmt.Sprintf("yum install -y %s", filepath.Join(packageDir, "*.rpm"))
+			cmd = fmt.Sprintf("%s localinstall -y --disablerepo='*' %s", pkgMgr, rpmFiles)
 		}
 		if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
 			log.Warnf("Failed to install dependencies for package %s: %v. Skipping...", pkgMgr, err)
@@ -348,7 +228,7 @@ func InstallPackages(destDir string) error {
 	// OpenSUSE / SLE
 	case "opensuse-leap", "sles", "suse":
 		// Install all .rpm files from packageDir using zypper
-		cmd := fmt.Sprintf("zypper --non-interactive install -y %s", filepath.Join(packageDir, "*.rpm"))
+		cmd := fmt.Sprintf("zypper --non-interactive install -y --no-recommends --repo '' %s/*.rpm", packageDir)
 		if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
 			log.Warnf("Failed to install dependencies for package %s: %v. Skipping...", cmd, err)
 		}

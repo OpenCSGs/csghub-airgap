@@ -2,6 +2,7 @@ package utils
 
 import (
 	"archive/tar"
+	"bufio"
 	"compress/gzip"
 	"csghub-airgap/internal/log"
 	"errors"
@@ -14,6 +15,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -425,4 +427,47 @@ func GetNestedString(m map[string]interface{}, keys ...string) (string, bool) {
 	}
 	val, ok := current.(string)
 	return val, ok
+}
+
+// GetOSID returns the Linux distribution ID (e.g., "ubuntu", "debian", "centos").
+// If it cannot detect the OS, it returns an empty string and an error.
+func GetOSID() (string, error) {
+	if runtime.GOOS != "linux" {
+		return "", fmt.Errorf("unsupported OS: %s", runtime.GOOS)
+	}
+
+	f, err := os.Open("/etc/os-release")
+	if err != nil {
+		return "", fmt.Errorf("failed to open /etc/os-release: %w", err)
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "ID=") {
+			id := strings.Trim(strings.TrimPrefix(line, "ID="), `"`)
+			return id, nil
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("error reading /etc/os-release: %w", err)
+	}
+
+	return "", fmt.Errorf("could not detect OS ID from /etc/os-release")
+}
+
+// IsRoot checks if the current process is running as root.
+// Returns true if root, false otherwise.
+func IsRoot() bool {
+	return os.Geteuid() == 0
+}
+
+// EnsureRoot ensures the program is running as root.
+// Returns an error if not root.
+func EnsureRoot() error {
+	if !IsRoot() {
+		return fmt.Errorf("this operation must be run as root")
+	}
+	return nil
 }
