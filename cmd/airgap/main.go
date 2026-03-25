@@ -307,14 +307,7 @@ func deployCommand() *cli.Command {
 				csghubOptions = map[string]interface{}{
 					"global": map[string]interface{}{
 						"persistence": map[string]interface{}{
-							"storageClass": "local-path",
-						},
-					},
-					"dataflow": map[string]interface{}{
-						"dataflow": map[string]interface{}{
-							"persistence": map[string]interface{}{
-								"storageClass": "longhorn",
-							},
+							"storageClass": "longhorn",
 						},
 					},
 				}
