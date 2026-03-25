@@ -1,6 +1,7 @@
 package k3s
 
 import (
+	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/net"
 	"csghub-airgap/internal/spec"
 	"csghub-airgap/internal/utils"
@@ -28,6 +29,8 @@ func Install(spec *spec.K3sSpec) error {
 	}
 
 	installCmd := spec.K3sInstallCmd()
+
+	log.Debugf("K3S install command: %s", installCmd)
 
 	if err := utils.ExecCommand("/bin/bash", "-c", installCmd); err != nil {
 		return err
