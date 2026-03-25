@@ -6,6 +6,7 @@ import (
 	"csghub-airgap/internal/flag"
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
+	"csghub-airgap/internal/utils"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -116,6 +117,10 @@ func createCommand() *cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) error {
+			if err := utils.EnsureRoot(); err != nil {
+				return err
+			}
+
 			debug := c.Bool("debug")
 			log.Init(debug)
 
@@ -259,6 +264,10 @@ func deployCommand() *cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) error {
+			if err := utils.EnsureRoot(); err != nil {
+				return err
+			}
+
 			debug := c.Bool("debug")
 			log.Init(debug)
 
@@ -368,6 +377,10 @@ func cleanupCommand() *cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) error {
+			if err := utils.EnsureRoot(); err != nil {
+				return err
+			}
+
 			yes := c.Bool("yes")
 			if !yes {
 				fmt.Print("This will delete all CSGHub resources. Continue? (y/N): ")
