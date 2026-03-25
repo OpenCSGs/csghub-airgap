@@ -13,9 +13,9 @@ import (
 )
 
 // PreparePackages sets up NVIDIA container toolkit repository depending on the Linux distro
+// PreparePackages sets up NVIDIA container toolkit repository depending on the Linux distro
 func PreparePackages(destDir string) error {
 	if runtime.GOOS != "linux" {
-		// Non-Linux OS, nothing to do
 		return nil
 	}
 
@@ -29,7 +29,6 @@ func PreparePackages(destDir string) error {
 		return fmt.Errorf("failed to create packageDir %s: %v", packageDir, err)
 	}
 
-	// Detect Linux distribution from /etc/os-release
 	f, err := os.Open("/etc/os-release")
 	if err != nil {
 		return fmt.Errorf("failed to open /etc/os-release: %w", err)
@@ -49,41 +48,53 @@ func PreparePackages(destDir string) error {
 		return err
 	}
 
-	// Use ExecCommand from utils package to run commands
 	switch id {
-	// Ubuntu / Debian
 	case "ubuntu", "debian":
-		// Ensure apt cache subdirectories exist for apt-get -d install (archives/partial)
-		aptArchivesPartial := filepath.Join(packageDir, "archives", "partial")
-		if err := os.MkdirAll(aptArchivesPartial, 0755); err != nil {
-			return fmt.Errorf("failed to create apt cache subdirectory %s: %v", aptArchivesPartial, err)
-		}
-
-		// Install prerequisites
 		if err := utils.ExecCommand("apt-get", "update"); err != nil {
 			return err
 		}
-		// Download prerequisites packages to packageDir with dependencies
-		if err := utils.ExecCommand("apt-get", "-y", "-d", "install", "-o", fmt.Sprintf("dir::cache=%s", packageDir),
-			"--download-only", "--reinstall", "--no-install-recommends", "ca-certificates", "curl", "gnupg2", "nfs-common", "open-iscsi"); err != nil {
-			log.Warnf("Failed to download apt cache packages to %s: %v", packageDir, err)
+
+		prereqs := []string{"ca-certificates", "curl", "gnupg2", "nfs-common", "open-iscsi"}
+		for _, pkg := range prereqs {
+			if err := utils.ExecCommand(
+				"bash",
+				"-c",
+				fmt.Sprintf(
+					"cd %s && apt-get download -o APT::Sandbox::User=root %s",
+					packageDir,
+					pkg,
+				),
+			); err != nil {
+				log.Warnf(
+					"Failed to download prerequisite package %s: %v",
+					pkg,
+					err,
+				)
+			}
 		}
 
-		// Add NVIDIA GPG key and repository
-		if err := utils.ExecCommand("bash", "-c", "curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --yes --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg"); err != nil {
+		if err := utils.ExecCommand(
+			"bash", "-c",
+			"curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | "+
+				"sudo gpg --yes --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg",
+		); err != nil {
 			log.Warnf("Failed to add gpgkey for nvidia package registry: %v", err)
 		}
-		if err := utils.ExecCommand("bash", "-c", "curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list"); err != nil {
+
+		if err := utils.ExecCommand(
+			"bash", "-c",
+			"curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | "+
+				"sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | "+
+				"sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list",
+		); err != nil {
 			log.Warnf("Failed to add apt repositories for nvidia container toolkit: %v", err)
 		}
 
-		// Update packages list
 		if err := utils.ExecCommand("apt-get", "update"); err != nil {
-			log.Warnf("Failed to update apt cache: %v", err)
+			log.Warnf("Failed to update apt cache after adding NVIDIA repo: %v", err)
 		}
 
-		// Download NVIDIA Container Toolkit packages to packageDir with dependencies
-		version := "1.18.0-1"
+		version := "1.18.2-1"
 		packages := []string{
 			fmt.Sprintf("nvidia-container-toolkit=%s", version),
 			fmt.Sprintf("nvidia-container-toolkit-base=%s", version),
@@ -91,31 +102,82 @@ func PreparePackages(destDir string) error {
 			fmt.Sprintf("libnvidia-container1=%s", version),
 		}
 		for _, pkg := range packages {
-			if err := utils.ExecCommand("apt-get", "-y", "-d", "install", "-o", fmt.Sprintf("dir::cache=%s", packageDir),
-				"--download-only", "--reinstall", pkg); err != nil {
-				log.Warnf("Failed to download packages %s: %v", pkg, err)
+			if err := utils.ExecCommand(
+				"bash",
+				"-c",
+				fmt.Sprintf(
+					"cd %s && apt-get download -o APT::Sandbox::User=root %s",
+					packageDir,
+					pkg,
+				),
+			); err != nil {
+				log.Warnf(
+					"Failed to download NVIDIA package %s: %v",
+					pkg,
+					err,
+				)
 			}
 		}
 
-	// RHEL / CentOS / Rocky / AlmaLinux / Fedora
 	case "rhel", "centos", "almalinux", "fedora":
 		pkgMgr := "dnf"
+		useYumDownloader := false
 		if _, err := exec.LookPath("dnf"); err != nil {
 			pkgMgr = "yum"
-		}
-		// Install prerequisites including nfs-utils
-		cmd := fmt.Sprintf("%s install --downloadonly --downloaddir=%s -y curl ca-certificates nfs-utils iscsi-initiator-utils", pkgMgr, packageDir)
-		if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
-			log.Warnf("Failed to download dependencies packages: %v", err)
+			useYumDownloader = true
 		}
 
-		// Add NVIDIA repository
-		if err := utils.ExecCommand("bash", "-c", `curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo | \
-  sudo tee /etc/yum.repos.d/nvidia-container-toolkit.repo`); err != nil {
+		// Ensure yum-utils is available for yumdownloader
+		if useYumDownloader {
+			if err := utils.ExecCommand(
+				"bash", "-c",
+				fmt.Sprintf("yum install --downloadonly --downloaddir=%s -y yum-utils", packageDir),
+			); err != nil {
+				log.Warnf("Failed to download yum-utils: %v", err)
+			}
+		}
+
+		prereqs := []string{"curl", "ca-certificates", "nfs-utils", "iscsi-initiator-utils"}
+		for _, pkg := range prereqs {
+			if pkgMgr == "dnf" {
+				if err := utils.ExecCommand(
+					"dnf",
+					"download",
+					"--resolve",
+					"--alldeps",
+					"--destdir", packageDir,
+					pkg,
+				); err != nil {
+					log.Warnf(
+						"Failed to download prerequisite package %s: %v",
+						pkg,
+						err,
+					)
+				}
+			} else {
+				cmd := fmt.Sprintf(
+					"yumdownloader --resolve --destdir=%s %s",
+					packageDir,
+					pkg,
+				)
+				if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
+					log.Warnf(
+						"Failed to download prerequisite package %s: %v",
+						pkg,
+						err,
+					)
+				}
+			}
+		}
+
+		if err := utils.ExecCommand(
+			"bash", "-c",
+			"curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo | "+
+				"sudo tee /etc/yum.repos.d/nvidia-container-toolkit.repo",
+		); err != nil {
 			log.Warnf("Failed to add yum repositories for nvidia container toolkit: %v", err)
 		}
 
-		// Download NVIDIA container toolkit packages to packageDir with dependencies
 		version := "1.18.0-1"
 		packages := []string{
 			fmt.Sprintf("nvidia-container-toolkit-%s", version),
@@ -125,31 +187,66 @@ func PreparePackages(destDir string) error {
 		}
 		for _, pkg := range packages {
 			if pkgMgr == "dnf" {
-				if err := utils.ExecCommand("dnf", "download", "--resolve", "--alldeps", "--destdir", packageDir, pkg); err != nil {
-					log.Warnf("Failed to download dependencies for package %s: %v. Skipping...", pkg, err)
+				if err := utils.ExecCommand(
+					"dnf",
+					"download",
+					"--resolve",
+					"--alldeps",
+					"--destdir", packageDir,
+					pkg,
+				); err != nil {
+					log.Warnf(
+						"Failed to download dependencies for package %s: %v. Skipping...",
+						pkg,
+						err,
+					)
 				}
 			} else {
-				// yum fallback
-				cmd := fmt.Sprintf("yum install --downloadonly --downloaddir=%s -y %s", packageDir, pkg)
+				cmd := fmt.Sprintf(
+					"yum install --downloadonly --downloaddir=%s -y %s",
+					packageDir,
+					pkg,
+				)
 				if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
-					log.Warnf("Failed to download dependencies for package %s: %v. Skipping...", pkg, err)
+					log.Warnf(
+						"Failed to download dependencies for package %s: %v. Skipping...",
+						pkg,
+						err,
+					)
 				}
 			}
 		}
 
-	// OpenSUSE / SLE
 	case "opensuse-leap", "sles", "suse":
-		// Install prerequisites including nfs-client and open-iscsi
-		if err := utils.ExecCommand("zypper", "install", "-y", "nfs-client", "open-iscsi"); err != nil {
-			log.Warnf("Failed to install dependencies: %v", err)
+		prereqs := []string{"nfs-client", "open-iscsi"}
+		for _, pkg := range prereqs {
+			if err := utils.ExecCommand(
+				"zypper",
+				"--non-interactive",
+				"download",
+				pkg,
+			); err != nil {
+				log.Warnf(
+					"Failed to download prerequisite package %s: %v",
+					pkg,
+					err,
+				)
+			}
 		}
 
-		// Add NVIDIA repository
-		if err := utils.ExecCommand("zypper", "ar", "-f", "https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo"); err != nil {
-			log.Warnf("Failed to add zypper repositories for nvidia container toolkit: %v", err)
+		if err := utils.ExecCommand(
+			"zypper",
+			"ar",
+			"-f",
+			"https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo",
+		); err != nil {
+			log.Warnf(
+				"Failed to add zypper repositories for nvidia container toolkit: %v",
+				err,
+			)
 		}
 
-		version := "1.18.0-1"
+		version := "1.18.2-1"
 		packages := []string{
 			fmt.Sprintf("nvidia-container-toolkit-%s", version),
 			fmt.Sprintf("nvidia-container-toolkit-base-%s", version),
@@ -157,9 +254,17 @@ func PreparePackages(destDir string) error {
 			fmt.Sprintf("libnvidia-container1-%s", version),
 		}
 		for _, pkg := range packages {
-			cmd := fmt.Sprintf("zypper --non-interactive install --download-only --auto-agree-with-licenses --download-in-advance --no-recommends -y --pkg-cache-dir %s %s", packageDir, pkg)
+			cmd := fmt.Sprintf(
+				"zypper --non-interactive install --download-only --auto-agree-with-licenses --download-in-advance --no-recommends -y --pkg-cache-dir %s %s",
+				packageDir,
+				pkg,
+			)
 			if err := utils.ExecCommand("bash", "-c", cmd); err != nil {
-				log.Warnf("Failed to install dependencies for package %s: %v. Skipping...", pkg, err)
+				log.Warnf(
+					"Failed to install dependencies for package %s: %v. Skipping...",
+					pkg,
+					err,
+				)
 			}
 		}
 
