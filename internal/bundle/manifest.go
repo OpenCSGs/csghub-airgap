@@ -5,6 +5,7 @@ import (
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
 	"csghub-airgap/internal/utils"
+	"encoding/json"
 	"os"
 	"path/filepath"
 
@@ -89,6 +90,9 @@ func loadSpecFromManifest(manifest string) (*Spec, error) {
 	if err = yaml.Unmarshal(data, &s); err != nil {
 		return nil, err
 	}
+
+	log.Debugf("Loaded spec from manifest: %s", manifest)
+	log.Debugf("Manifest contents: %s", func() []byte { b, _ := json.Marshal(s); return b }())
 
 	return &s, nil
 }

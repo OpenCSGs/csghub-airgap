@@ -57,10 +57,25 @@ func (cs *ChartSpec) Merge(ds *ChartSpec) {
 		fieldA := av.Field(i)
 		fieldB := bv.Field(i)
 
-		// only set if fieldB is non-zero and settable
-		if fieldB.IsValid() && !utils.IsZeroValue(fieldB) && fieldA.CanSet() {
-			fieldA.Set(fieldB)
+		if !fieldB.IsValid() || utils.IsZeroValue(fieldB) || !fieldA.CanSet() {
+			continue
 		}
+
+		// 👇 Special ChartOptions
+		if av.Type().Field(i).Name == "ChartOptions" {
+			if fieldA.IsNil() {
+				fieldA.Set(fieldB)
+			} else {
+				merged := utils.MergeMap(
+					fieldA.Interface().(map[string]interface{}),
+					fieldB.Interface().(map[string]interface{}),
+				)
+				fieldA.Set(reflect.ValueOf(merged))
+			}
+			continue
+		}
+
+		fieldA.Set(fieldB)
 	}
 }
 

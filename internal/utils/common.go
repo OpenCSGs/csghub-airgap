@@ -295,7 +295,7 @@ func CopyFile(src, dst string, bufferSize ...int64) error {
 	if err != nil {
 		return err
 	}
-	mode := fi.Mode() // 保存原始权限
+	mode := fi.Mode()
 
 	// Ensure destination directory exists
 	dstDir := filepath.Dir(dst)
