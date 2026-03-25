@@ -3,6 +3,7 @@ package spec
 import (
 	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/utils"
+	"fmt"
 	"runtime"
 )
 
@@ -58,9 +59,9 @@ func NewCsghubSpec(destDir string, options map[string]interface{}) *ChartSpec {
 		ChartOptions: map[string]interface{}{
 			"global": map[string]interface{}{
 				"image": map[string]interface{}{
-					"registry": "opencsg-registry.cn-beijing.cr.aliyuncs.com",
+					"registry": config.DefaultRegistry,
 				},
-				"imageRegistry": "opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq",
+				"imageRegistry": config.DefaultRegistryWithNamespace,
 				"edition":       "ee",
 				"gateway": map[string]interface{}{
 					"external": map[string]interface{}{
@@ -80,6 +81,26 @@ func NewCsghubSpec(destDir string, options map[string]interface{}) *ChartSpec {
 				"volcano": map[string]interface{}{
 					"basic": map[string]interface{}{
 						"image_pull_policy": "IfNotPresent",
+					},
+				},
+				"argo": map[string]interface{}{
+					"images": map[string]interface{}{
+						"pullPolicy": "IfNotPresent",
+					},
+					"controller": map[string]interface{}{
+						"image": map[string]interface{}{
+							"registry": config.DefaultRegistryWithNamespace,
+						},
+					},
+					"executor": map[string]interface{}{
+						"image": map[string]interface{}{
+							"registry": config.DefaultRegistryWithNamespace,
+						},
+					},
+					"server": map[string]interface{}{
+						"image": map[string]interface{}{
+							"registry": config.DefaultRegistryWithNamespace,
+						},
 					},
 				},
 			},
@@ -102,7 +123,7 @@ func NewLonghornSpec(destDir string, options map[string]interface{}) *ChartSpec 
 		OutPath:      utils.NVL(destDir, config.DefaultDestDir),
 		ChartOptions: utils.NVLMap(options, map[string]interface{}{
 			"global": map[string]interface{}{
-				"imageRegistry": "opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq",
+				"imageRegistry": config.DefaultRegistryWithNamespace,
 			},
 			"persistence": map[string]interface{}{
 				"backupTargetName": "",
@@ -127,11 +148,11 @@ func NewNvdpSpec(destDir string, options map[string]interface{}) *ChartSpec {
 		ChartOptions: utils.NVLMap(options, map[string]interface{}{
 			"nfd": map[string]interface{}{
 				"image": map[string]interface{}{
-					"repository": "opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq/nfd/node-feature-discovery",
+					"repository": fmt.Sprintf("%s/nfd/node-feature-discovery", config.DefaultRegistryWithNamespace),
 				},
 			},
 			"image": map[string]interface{}{
-				"repository": "opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq/nvidia/k8s-device-plugin",
+				"repository": fmt.Sprintf("%s/nvidia/k8s-device-plugin", config.DefaultRegistryWithNamespace),
 			},
 			"gfd": map[string]interface{}{
 				"enabled": true,

@@ -6,6 +6,7 @@ import (
 	"csghub-airgap/internal/log"
 	is "csghub-airgap/internal/spec"
 	"csghub-airgap/internal/utils"
+	"fmt"
 	"strings"
 )
 
@@ -19,7 +20,7 @@ var (
 				Path:     "image.csi.*",
 				Template: "{{ if .registry }}{{ .registry }}/{{ else }}docker.io/{{ end }}{{ .repository }}:{{ .tag }}",
 				ReplaceFunc: func(img string) string {
-					return strings.Replace(img, "docker.io", "opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq", 1)
+					return strings.Replace(img, "docker.io", config.DefaultRegistryWithNamespace, 1)
 				},
 			},
 			{
@@ -27,7 +28,7 @@ var (
 				Path:     "image.longhorn.*",
 				Template: "{{ if .registry }}{{ .registry }}/{{ else }}docker.io/{{ end }}{{ .repository }}:{{ .tag }}",
 				ReplaceFunc: func(img string) string {
-					return strings.Replace(img, "docker.io", "opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq", 1)
+					return strings.Replace(img, "docker.io", config.DefaultRegistryWithNamespace, 1)
 				},
 			},
 		},
@@ -41,7 +42,7 @@ var (
 				Path:     "spec.registry.override.*",
 				Template: "{{ . }}",
 				ReplaceFunc: func(img string) string {
-					return strings.Replace(img, "gcr.io", "opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq", 1)
+					return strings.Replace(img, "gcr.io", config.DefaultRegistryWithNamespace, 1)
 				},
 			},
 		},
@@ -69,6 +70,16 @@ func Image(spec *is.ChartSpec, opts image.ExtractOption) error {
 	}
 
 	images := image.ExtractAllImages(manifest, yamlResource, opts)
+
+	switch spec.RepoName {
+	case "csghub":
+		registry, _ := utils.GetNestedString(spec.ChartOptions, "runner", "argo", "executor", "image", "registry")
+		if registry == "" {
+			registry = config.DefaultRegistryWithNamespace
+		}
+		argoExecutor := fmt.Sprintf("%s/argoproj/argoexec:v3.7.10", registry)
+		images = append(images, argoExecutor)
+	}
 
 	log.Debugf("Images pulled: %v", images)
 
