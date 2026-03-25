@@ -150,6 +150,10 @@ func setDefaultChart(spec **ChartSpec, newFn func(string, map[string]interface{}
 func WithDestDir(dir string) BundleSpecOption {
 	return func(bs *BundleSpec) {
 		bs.DestDir = dir
+		bs.K3s.DestDir = dir
+		bs.Csghub.OutPath = dir
+		bs.Longhorn.OutPath = dir
+		bs.Nvdp.OutPath = dir
 	}
 }
 
