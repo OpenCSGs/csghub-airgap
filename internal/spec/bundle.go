@@ -128,7 +128,7 @@ func NewLonghornSpec(destDir string, options map[string]interface{}) *ChartSpec 
 			"persistence": map[string]interface{}{
 				"backupTargetName":         "",
 				"defaultClassReplicaCount": 1,
-				"defaultDataLocality":      "best-effort",
+				//"defaultDataLocality":      "best-effort",
 			},
 			"defaultSettings": map[string]interface{}{
 				"defaultDataPath":                         "/var/lib/longhorn/",
