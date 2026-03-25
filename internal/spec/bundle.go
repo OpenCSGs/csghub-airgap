@@ -126,7 +126,9 @@ func NewLonghornSpec(destDir string, options map[string]interface{}) *ChartSpec 
 				"imageRegistry": config.DefaultRegistryWithNamespace,
 			},
 			"persistence": map[string]interface{}{
-				"backupTargetName": "",
+				"backupTargetName":         "",
+				"defaultClassReplicaCount": 1,
+				"defaultDataLocality":      "best-effort",
 			},
 			"defaultSettings": map[string]interface{}{
 				"defaultDataPath":                         "/var/lib/longhorn/",
