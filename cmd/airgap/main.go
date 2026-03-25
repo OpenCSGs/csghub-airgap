@@ -209,6 +209,11 @@ func deployCommand() *cli.Command {
 				Required: false,
 				Value:    config.DefaultDestDir,
 			},
+			&cli.StringFlag{
+				Name:    "data",
+				Aliases: []string{"D"},
+				Usage:   "Specify k3s and longhorn data path",
+			},
 			// ===== K3S =====
 			&cli.BoolFlag{
 				Name:    "skip-k3s",
@@ -283,7 +288,12 @@ func deployCommand() *cli.Command {
 				opts = append(opts, spec.WithK3sEnvs(k3sEnvs))
 			}
 
-			if k3sArgs := c.StringSlice("k3s-arg"); len(k3sArgs) > 0 {
+			k3sArgs := c.StringSlice("k3s-arg")
+			if data := c.String("data"); data != "" {
+				k3sArgs = append(k3sArgs, fmt.Sprintf("--data-dir=%s/k3s", data))
+			}
+
+			if len(k3sArgs) > 0 {
 				opts = append(opts, spec.WithK3sArgs(k3sArgs))
 			}
 
@@ -313,6 +323,15 @@ func deployCommand() *cli.Command {
 				}
 
 				opts = append(opts, spec.WithCsghubOptions(csghubOptions))
+
+				if data := c.String("data"); data != "" {
+					longhornOptions := map[string]interface{}{
+						"defaultSettings": map[string]interface{}{
+							"defaultDataPath": fmt.Sprintf("%s/longhorn", data),
+						},
+					}
+					opts = append(opts, spec.WithLonghornOptions(longhornOptions))
+				}
 			}
 
 			// ===== NVDP =====
