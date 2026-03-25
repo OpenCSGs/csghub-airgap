@@ -2,10 +2,11 @@ package spec
 
 import (
 	"csghub-airgap/internal/config"
+	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/net"
 	"csghub-airgap/internal/utils"
+	"encoding/json"
 	"fmt"
-	"log"
 	"net/url"
 	"path/filepath"
 	"regexp"
@@ -52,6 +53,8 @@ func NewK3sSpec(destDir string) *K3sSpec {
 
 	// Populate default values from struct tags
 	defaults.SetDefaults(ks)
+
+	log.Debugf("Initialized K3s spec: %s", func() []byte { b, _ := json.Marshal(ks); return b }())
 
 	return ks
 }

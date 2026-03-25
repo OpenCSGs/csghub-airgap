@@ -6,6 +6,7 @@ import (
 	"csghub-airgap/internal/flag"
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -171,14 +172,14 @@ func createCommand() *cli.Command {
 				opts = append(opts, spec.WithNvdpOptions(nvdpOptions))
 			}
 
-			log.Debugf("Received options: %v", opts)
+			log.Debugf("Received deploy options: %s", func() []byte { b, _ := json.Marshal(opts); return b }())
 
 			bs, err := spec.NewBundleSpec(opts...)
 			if err != nil {
 				return err
 			}
 
-			log.Debugf("Created bundle spec: %v", bs)
+			log.Debugf("Create deploy bundle spec: %s", func() []byte { b, _ := json.Marshal(bs); return b }())
 
 			bundleSpec := bundle.NewFromSpec(bs)
 			if err = bundleSpec.Create(); err != nil {
@@ -329,21 +330,21 @@ func deployCommand() *cli.Command {
 				opts = append(opts, spec.WithNvdpOptions(nvdpOptions))
 			}
 
-			log.Debugf("Received options: %v", opts)
+			log.Debugf("Received deploy options: %s", func() []byte { b, _ := json.Marshal(opts); return b }())
 
 			bs, err := spec.NewBundleSpec(opts...)
 			if err != nil {
 				return err
 			}
 
-			log.Debugf("Created bundle spec: %v", bs)
+			log.Debugf("Create deploy bundle spec: %s", func() []byte { b, _ := json.Marshal(bs); return b }())
 
 			bundleSpec, err := bundle.LoadFromManifest(inputDir, bs)
 			if err != nil {
 				return fmt.Errorf("failed to load bundle manifest: %w", err)
 			}
 
-			log.Debugf("Loaded bundle spec: %v", bundleSpec)
+			log.Debugf("Load deploy bundle spec: %s", func() []byte { b, _ := json.Marshal(bundleSpec); return b }())
 
 			if err = bundleSpec.Deploy(); err != nil {
 				return fmt.Errorf("%w", err)

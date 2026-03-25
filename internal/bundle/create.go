@@ -36,14 +36,12 @@ func (s *Spec) Create() error {
 
 	charts = append(charts, s.Csghub)
 
-	log.Debugf("Charts for offline: %v", charts)
-
 	for _, c := range charts {
 		if c.ChartVersion == "" {
 			c.ChartVersion = chart.LastVersion(c).String()
 		}
 
-		log.Debugf("Processing chart %s with version %v", c.ChartName, c.ChartVersion)
+		log.Debugf("Processing chart %s with version %s", c.ChartName, c.ChartVersion)
 
 		if err := chart.Pull(c); err != nil {
 			return err
