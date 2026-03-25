@@ -47,6 +47,13 @@ var (
 			},
 		},
 	}
+	imageList = []string{
+		"space-base:python3.10-1.0.4",
+		"space-base:python3.10-cuda12.1.0-1.0.4",
+		"space-base:python3.10-cuda11.8.0-1.0.4",
+		"nginx:latest",
+		"argoproj/argoexec:v3.7.10",
+	}
 )
 
 func Image(spec *is.ChartSpec, opts image.ExtractOption) error {
@@ -73,12 +80,9 @@ func Image(spec *is.ChartSpec, opts image.ExtractOption) error {
 
 	switch spec.RepoName {
 	case "csghub":
-		registry, _ := utils.GetNestedString(spec.ChartOptions, "runner", "argo", "executor", "image", "registry")
-		if registry == "" {
-			registry = config.DefaultRegistryWithNamespace
+		for _, img := range imageList {
+			images = append(images, fmt.Sprintf("%s/%s", config.DefaultRegistryWithNamespace, img))
 		}
-		argoExecutor := fmt.Sprintf("%s/argoproj/argoexec:v3.7.10", registry)
-		images = append(images, argoExecutor)
 	}
 
 	log.Debugf("Images pulled: %v", images)
