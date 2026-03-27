@@ -130,11 +130,21 @@ func NewLonghornSpec(destDir string, options map[string]interface{}) *ChartSpec 
 				"defaultClassReplicaCount": 1,
 				//"defaultDataLocality":      "best-effort",
 			},
+			"csi": map[string]interface{}{
+				"attacherReplicaCount":    1,
+				"provisionerReplicaCount": 1,
+				"resizerReplicaCount":     1,
+				"snapshotterReplicaCount": 1,
+			},
 			"defaultSettings": map[string]interface{}{
 				"defaultDataPath":                         "/var/lib/longhorn/",
 				"storageOverProvisioningPercentage":       3000, // Allow 30 times overuse
 				"storageMinimalAvailablePercentage":       10,
 				"storageReservedPercentageForDefaultDisk": 10,
+				"defaultReplicaCount":                     1,
+			},
+			"longhornUI": map[string]interface{}{
+				"replicas": 1,
 			},
 		}),
 	}
