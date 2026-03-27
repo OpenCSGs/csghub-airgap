@@ -31,7 +31,7 @@ func Export(spec *spec.ImageSpec) error {
 
 	imgMap := make(map[string]v1.Image)
 	for _, imgName := range spec.Images {
-		img, err := crane.Pull(imgName)
+		img, err := PullImage(imgName)
 		if err != nil {
 			return err
 		}
