@@ -111,7 +111,7 @@ func createCommand() *cli.Command {
 			},
 			&cli.BoolFlag{
 				Name:    "debug",
-				Aliases: []string{"d"},
+				Aliases: []string{"D"},
 				Usage:   "Turn on debug mode",
 				Value:   false,
 			},
@@ -211,7 +211,7 @@ func deployCommand() *cli.Command {
 			},
 			&cli.StringFlag{
 				Name:    "data",
-				Aliases: []string{"D"},
+				Aliases: []string{"d"},
 				Usage:   "Specify k3s and longhorn data path",
 			},
 			// ===== K3S =====
@@ -263,7 +263,7 @@ func deployCommand() *cli.Command {
 			},
 			&cli.BoolFlag{
 				Name:    "debug",
-				Aliases: []string{"d"},
+				Aliases: []string{"D"},
 				Usage:   "Turn on debug mode",
 				Value:   false,
 			},
@@ -282,6 +282,7 @@ func deployCommand() *cli.Command {
 			opts = append(opts, spec.WithDestDir(inputDir))
 
 			// ===== k3s =====
+
 			opts = append(opts, spec.WithK3sSkip(c.Bool("skip-k3s")))
 
 			if k3sEnvs := c.StringSlice("k3s-env"); len(k3sEnvs) > 0 {
@@ -292,6 +293,9 @@ func deployCommand() *cli.Command {
 			if data := c.String("data"); data != "" {
 				k3sArgs = append(k3sArgs, fmt.Sprintf("--data-dir=%s/k3s", data))
 			}
+
+			// ===== NVDP =====
+			opts = append(opts, spec.WithNvdpSkip(c.Bool("skip-nvdp")))
 
 			if len(k3sArgs) > 0 {
 				opts = append(opts, spec.WithK3sArgs(k3sArgs))
@@ -333,9 +337,6 @@ func deployCommand() *cli.Command {
 					opts = append(opts, spec.WithLonghornOptions(longhornOptions))
 				}
 			}
-
-			// ===== NVDP =====
-			opts = append(opts, spec.WithNvdpSkip(c.Bool("skip-nvdp")))
 
 			// ===== chart options =====
 			if sets := c.StringSlice("set"); len(sets) > 0 {
