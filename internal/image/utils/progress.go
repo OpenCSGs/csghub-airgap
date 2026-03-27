@@ -2,6 +2,7 @@ package utils
 
 import (
 	"io"
+	"os"
 	"sync"
 	"time"
 
@@ -12,6 +13,22 @@ import (
 
 	"csghub-airgap/internal/log"
 )
+
+var outputMu sync.Mutex
+
+type lockedWriter struct{}
+
+func (w lockedWriter) Write(p []byte) (n int, err error) {
+	outputMu.Lock()
+	defer outputMu.Unlock()
+	// Always write to stdout to keep a single output stream
+	return os.Stdout.Write(p)
+}
+
+func init() {
+	// Ensure log package writes to the same synchronized writer
+	log.SetOutput(lockedWriter{})
+}
 
 // PullImage pulls a single image, displays progress, and logs completion information
 func PullImage(image string) (v1.Image, error) {
@@ -37,16 +54,25 @@ func PullImage(image string) (v1.Image, error) {
 		total += size
 	}
 
+	// Limit image name to max 60 chars; if longer, truncate from the left with "...".
+	// If shorter, keep as-is (left-aligned).
+	const maxLen = 40
+	shortImage := image
+	if len(shortImage) > maxLen {
+		shortImage = "..." + shortImage[len(shortImage)-(maxLen-3):]
+	}
+
 	// Initialize progress bar
 	bar := progressbar.NewOptions64(
 		total,
-		progressbar.OptionSetDescription("Downloading "+image),
-		progressbar.OptionSetWidth(40),
+		progressbar.OptionSetDescription("Pulling "+shortImage),
+		progressbar.OptionSetWidth(30),
 		progressbar.OptionShowBytes(true),
 		progressbar.OptionShowIts(),
 		progressbar.OptionThrottle(100*time.Millisecond),
-		progressbar.OptionOnCompletion(func() { println() }),
-		progressbar.OptionSetRenderBlankState(true),
+		progressbar.OptionSetRenderBlankState(false),
+		progressbar.OptionClearOnFinish(),
+		progressbar.OptionSetWriter(lockedWriter{}),
 	)
 
 	// Pull layers concurrently
@@ -72,6 +98,7 @@ func PullImage(image string) (v1.Image, error) {
 
 			rc, err := layer.Compressed()
 			if err != nil {
+				log.Warnf("failed to read layer %s: %v", image, err)
 				return
 			}
 			defer rc.Close()
@@ -80,11 +107,14 @@ func PullImage(image string) (v1.Image, error) {
 			for {
 				n, err := rc.Read(buf)
 				if n > 0 {
-					progressChan <- int64(n)
+					select {
+					case progressChan <- int64(n):
+					default:
+					}
 				}
 				if err != nil {
 					if err != io.EOF {
-						// Ignore other errors
+						log.Warnf("layer read error: %v", err)
 					}
 					break
 				}

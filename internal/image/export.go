@@ -39,11 +39,13 @@ func Export(spec *spec.ImageSpec) error {
 		imgMap[imgName] = img
 	}
 
+	log.Infof("Exporting %d images to %s, it will take a few minutes...", len(spec.Images), imageFileName)
+
 	if err := crane.MultiSave(imgMap, imageFilePath); err != nil {
 		return fmt.Errorf("error saving images %s: %w", spec.Images, err)
 	}
 
-	log.Infof("Exported images to %s (elapsed %.3fs)", spec.ImageFileName(), time.Since(pullStart).Seconds())
+	log.Infof("Exported %d images to %s (elapsed %.3fs)", len(spec.Images), spec.ImageFileName(), time.Since(pullStart).Seconds())
 
 	return nil
 }
