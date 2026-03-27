@@ -1,4 +1,4 @@
-package image
+package utils
 
 import (
 	"io"
@@ -13,7 +13,7 @@ import (
 	"csghub-airgap/internal/log"
 )
 
-// PullImage 拉取单个镜像，并显示进度和下载完成信息
+// PullImage pulls a single image, displays progress, and logs completion information
 func PullImage(image string) (v1.Image, error) {
 	ref, err := name.ParseReference(image)
 	if err != nil {
@@ -30,14 +30,14 @@ func PullImage(image string) (v1.Image, error) {
 		return nil, err
 	}
 
-	// 计算总大小
+	// Calculate total size
 	var total int64
 	for _, l := range layers {
 		size, _ := l.Size()
 		total += size
 	}
 
-	// 初始化进度条
+	// Initialize progress bar
 	bar := progressbar.NewOptions64(
 		total,
 		progressbar.OptionSetDescription("Downloading "+image),
@@ -49,7 +49,7 @@ func PullImage(image string) (v1.Image, error) {
 		progressbar.OptionSetRenderBlankState(true),
 	)
 
-	// 并发拉取层
+	// Pull layers concurrently
 	sem := make(chan struct{}, 3)
 	var wg sync.WaitGroup
 	progressChan := make(chan int64, 100)
@@ -84,7 +84,7 @@ func PullImage(image string) (v1.Image, error) {
 				}
 				if err != nil {
 					if err != io.EOF {
-						// 忽略其他错误
+						// Ignore other errors
 					}
 					break
 				}
@@ -97,16 +97,13 @@ func PullImage(image string) (v1.Image, error) {
 	<-done
 	_ = bar.Finish()
 
-	// 使用 log 统一输出 INFO
-	log.Infof("INFO[%s] File downloaded successfully: %s",
-		time.Now().Format("2006-01-02T15:04:05-07:00"),
-		image,
-	)
+	// Use unified log output for INFO level
+	log.Infof("Image pulled successfully: %s", image)
 
 	return img, nil
 }
 
-// PullImages 顺序拉取多个镜像，每个镜像独立进度条
+// PullImages pulls multiple images sequentially with an independent progress bar for each image
 func PullImages(images []string) ([]v1.Image, error) {
 	var result []v1.Image
 	for _, img := range images {

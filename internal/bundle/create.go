@@ -2,7 +2,7 @@ package bundle
 
 import (
 	"csghub-airgap/internal/chart"
-	"csghub-airgap/internal/image"
+	iu "csghub-airgap/internal/image/utils"
 	"csghub-airgap/internal/k3s"
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/pack"
@@ -47,7 +47,7 @@ func (s *Spec) Create() error {
 			return err
 		}
 
-		var opt image.ExtractOption
+		var opt iu.ExtractOption
 		switch c.RepoName {
 		case "csghub":
 			opt = chart.CsghubExtractOption

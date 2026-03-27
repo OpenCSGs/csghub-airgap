@@ -1,6 +1,7 @@
 package image
 
 import (
+	"csghub-airgap/internal/image/utils"
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
 	"fmt"
@@ -31,7 +32,7 @@ func Export(spec *spec.ImageSpec) error {
 
 	imgMap := make(map[string]v1.Image)
 	for _, imgName := range spec.Images {
-		img, err := PullImage(imgName)
+		img, err := utils.PullImage(imgName)
 		if err != nil {
 			return err
 		}

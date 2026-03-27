@@ -3,6 +3,7 @@ package chart
 import (
 	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/image"
+	iu "csghub-airgap/internal/image/utils"
 	"csghub-airgap/internal/log"
 	is "csghub-airgap/internal/spec"
 	"csghub-airgap/internal/utils"
@@ -11,10 +12,10 @@ import (
 )
 
 var (
-	LonghornExtractOption = image.ExtractOption{
+	LonghornExtractOption = iu.ExtractOption{
 		FromValues: true,
 		FromKind:   "",
-		Rules: []image.ExtractRule{
+		Rules: []iu.ExtractRule{
 			{
 				Name:     "image.csi",
 				Path:     "image.csi.*",
@@ -33,10 +34,10 @@ var (
 			},
 		},
 	}
-	CsghubExtractOption = image.ExtractOption{
+	CsghubExtractOption = iu.ExtractOption{
 		FromValues: false,
 		FromKind:   "KnativeServing",
-		Rules: []image.ExtractRule{
+		Rules: []iu.ExtractRule{
 			{
 				Name:     "spec.registry.override",
 				Path:     "spec.registry.override.*",
@@ -56,7 +57,7 @@ var (
 	}
 )
 
-func Image(spec *is.ChartSpec, opts image.ExtractOption) error {
+func Image(spec *is.ChartSpec, opts iu.ExtractOption) error {
 	manifest, err := Template(spec)
 	if err != nil {
 		return err
@@ -76,7 +77,7 @@ func Image(spec *is.ChartSpec, opts image.ExtractOption) error {
 		}
 	}
 
-	images := image.ExtractAllImages(manifest, yamlResource, opts)
+	images := iu.ExtractAllImages(manifest, yamlResource, opts)
 
 	switch spec.RepoName {
 	case "csghub":
