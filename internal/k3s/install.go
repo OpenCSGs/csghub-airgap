@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Install Deploy the K3s airgap
@@ -40,6 +41,36 @@ func Install(spec *spec.K3sSpec) error {
 		return err
 	}
 
+	newDataDir := resolveK3sDataDir(spec)
+	if newDataDir != "/var/lib/rancher/k3s" {
+		// Ensure crictl can always find config at /etc/crictl.yaml
+		target := "/etc/crictl.yaml"
+		src := fmt.Sprintf("%s/agent/etc/crictl.yaml", newDataDir)
+
+		// Create symlink only if source exists (k3s may not have started yet)
+		if _, err := os.Stat(src); err == nil {
+			// If target exists, check if it's already the correct symlink
+			if fi, err := os.Lstat(target); err == nil {
+				if fi.Mode()&os.ModeSymlink != 0 {
+					// existing symlink
+					existing, _ := os.Readlink(target)
+					if existing == src {
+						// already correct, nothing to do
+						return nil
+					}
+				}
+				// remove incorrect or regular file
+				_ = os.Remove(target)
+			}
+
+			if err := os.Symlink(src, target); err != nil {
+				return fmt.Errorf("failed to create crictl symlink: %w", err)
+			}
+		} else {
+			log.Warnf("crictl config not found at %s, skip symlink", src)
+		}
+	}
+
 	return nil
 }
 
@@ -56,7 +87,9 @@ ip route add default via 203.0.113.255 dev dummy0 metric 1000)
 }
 
 func imageImport(spec *spec.K3sSpec) error {
-	defaultK3sImagesDir := "/var/lib/rancher/k3s/agent/images/"
+	defaultK3sDataDir := resolveK3sDataDir(spec)
+	defaultK3sImagesDir := filepath.Join(defaultK3sDataDir, "agent/images/")
+
 	if err := os.MkdirAll(defaultK3sImagesDir, 0755); err != nil {
 		return err
 	}
@@ -147,4 +180,30 @@ func PatchInstall(spec *spec.K3sSpec, domain string) error {
 	}
 
 	return nil
+}
+
+func resolveK3sDataDir(spec *spec.K3sSpec) string {
+	dataDir := "/var/lib/rancher/k3s"
+
+	for i, arg := range spec.InstallArgs {
+		// Handle "--data-dir=/path"
+		if strings.HasPrefix(arg, "--data-dir=") {
+			v := strings.TrimPrefix(arg, "--data-dir=")
+			if v != "" {
+				dataDir = v
+			}
+			break
+		}
+
+		// Handle "--data-dir /path"
+		if arg == "--data-dir" && i+1 < len(spec.InstallArgs) {
+			v := spec.InstallArgs[i+1]
+			if v != "" {
+				dataDir = v
+			}
+			break
+		}
+	}
+
+	return strings.TrimRight(dataDir, "/")
 }
