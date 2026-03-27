@@ -1,9 +1,12 @@
 package log
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -13,13 +16,22 @@ var (
 	Std *log.Logger
 )
 
+type simpleFormatter struct{}
+
+func (f *simpleFormatter) Format(e *logrus.Entry) ([]byte, error) {
+	// Force UTC+8 timezone and show milliseconds (3 digits)
+	loc := time.FixedZone("UTC+8", 8*3600)
+	ts := e.Time.In(loc).Format("2006-01-02T15:04:05.000+08:00")
+	level := strings.ToUpper(e.Level.String())
+	msg := e.Message
+	return []byte(fmt.Sprintf("%s[%s] %s\n", level, ts, msg)), nil
+}
+
 func init() {
 	Log = logrus.New()
 	Log.SetOutput(os.Stdout)
 	Log.SetLevel(logrus.InfoLevel)
-	Log.SetFormatter(&logrus.TextFormatter{
-		FullTimestamp: true,
-	})
+	Log.SetFormatter(&simpleFormatter{})
 }
 
 func Init(debug bool) {
@@ -72,4 +84,17 @@ func Fatal(args ...interface{}) {
 
 func Fatalf(format string, args ...interface{}) {
 	Log.Fatalf(format, args...)
+}
+
+func SetOutput(w io.Writer) {
+	if w == nil {
+		return
+	}
+
+	Log.SetOutput(w)
+	// Re-apply formatter to avoid fallback to default logrus format
+	Log.SetFormatter(&simpleFormatter{})
+	if Std != nil {
+		Std.SetOutput(w)
+	}
 }
