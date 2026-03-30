@@ -49,7 +49,7 @@ func (s *Spec) Deploy() error {
 	for _, c := range charts {
 		imageSpec := &spec.ImageSpec{
 			Images:       nil,
-			OutPath:      utils.NVL(s.DestDir, config.DefaultDestDir),
+			OutPath:      utils.NVL(s.DestDir, config.DefaultBaseDir),
 			ChartName:    c.ChartName,
 			ChartVersion: c.ChartVersion,
 		}

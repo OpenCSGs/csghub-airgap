@@ -90,7 +90,7 @@ func Image(spec *is.ChartSpec, opts iu.ExtractOption) error {
 
 	imageSpec := &is.ImageSpec{
 		Images:       images,
-		OutPath:      utils.NVL(spec.OutPath, config.DefaultDestDir),
+		OutPath:      utils.NVL(spec.OutPath, config.DefaultBaseDir),
 		ChartName:    spec.ChartName,
 		ChartVersion: spec.ChartVersion,
 	}

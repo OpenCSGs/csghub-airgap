@@ -55,7 +55,7 @@ func LoadFromManifest(destDir string, bs *spec.BundleSpec) (*Spec, error) {
 }
 
 func (s *Spec) Manifest() error {
-	outDir := utils.NVL(s.DestDir, config.DefaultDestDir)
+	outDir := utils.NVL(s.DestDir, config.DefaultBaseDir)
 	if err := os.MkdirAll(outDir, 0755); err != nil {
 		return err
 	}

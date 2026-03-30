@@ -20,7 +20,7 @@ type ChartSpec struct {
 
 func NewChartSpec(destDir string) *ChartSpec {
 	return &ChartSpec{
-		OutPath: utils.NVL(destDir, config.DefaultDestDir),
+		OutPath: utils.NVL(destDir, config.DefaultBaseDir),
 	}
 }
 

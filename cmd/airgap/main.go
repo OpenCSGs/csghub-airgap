@@ -42,7 +42,7 @@ func createCommand() *cli.Command {
 				Aliases:  []string{"o"},
 				Usage:    "Output bundle path",
 				Required: false,
-				Value:    config.DefaultDestDir,
+				Value:    config.DefaultBaseDir,
 			},
 			// ===== K3S =====
 			&cli.StringFlag{
@@ -189,7 +189,7 @@ func deployCommand() *cli.Command {
 				Aliases:  []string{"i"},
 				Usage:    "Input bundle path",
 				Required: false,
-				Value:    config.DefaultDestDir,
+				Value:    config.DefaultBaseDir,
 			},
 			&cli.StringFlag{
 				Name:    "data",

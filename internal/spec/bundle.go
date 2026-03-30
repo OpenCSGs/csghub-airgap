@@ -26,11 +26,11 @@ func NewBundleSpec(opts ...BundleSpecOption) (*BundleSpec, error) {
 		SkipK3s:      false,
 		SkipLonghorn: false,
 		Arch:         runtime.GOARCH,
-		DestDir:      config.DefaultDestDir,
+		DestDir:      config.DefaultBaseDir,
 	}
 
 	if bs.K3s == nil {
-		bs.K3s = NewK3sSpec(bs.DestDir)
+		bs.K3s = NewK3sSpec()
 	}
 	if bs.Csghub == nil {
 		bs.Csghub = NewCsghubSpec(bs.DestDir, nil)
@@ -55,7 +55,7 @@ func NewCsghubSpec(destDir string, options map[string]interface{}) *ChartSpec {
 		RepoURL:      "https://charts.opencsg.com/csghub/",
 		ChartName:    "csghub",
 		ChartVersion: "",
-		OutPath:      utils.NVL(destDir, config.DefaultDestDir),
+		OutPath:      utils.NVL(destDir, config.DefaultBaseDir),
 		ChartOptions: map[string]interface{}{
 			"global": map[string]interface{}{
 				"image": map[string]interface{}{
@@ -120,7 +120,7 @@ func NewLonghornSpec(destDir string, options map[string]interface{}) *ChartSpec 
 		RepoURL:      "https://charts.opencsg.com/repository/longhorn/",
 		ChartName:    "longhorn",
 		ChartVersion: "",
-		OutPath:      utils.NVL(destDir, config.DefaultDestDir),
+		OutPath:      utils.NVL(destDir, config.DefaultBaseDir),
 		ChartOptions: utils.NVLMap(options, map[string]interface{}{
 			"global": map[string]interface{}{
 				"imageRegistry": config.DefaultRegistryWithNamespace,
@@ -156,7 +156,7 @@ func NewNvdpSpec(destDir string, options map[string]interface{}) *ChartSpec {
 		RepoURL:      "https://charts.opencsg.com/k8s-device-plugin/",
 		ChartName:    "nvidia-device-plugin",
 		ChartVersion: "",
-		OutPath:      utils.NVL(destDir, config.DefaultDestDir),
+		OutPath:      utils.NVL(destDir, config.DefaultBaseDir),
 		ChartOptions: utils.NVLMap(options, map[string]interface{}{
 			"nfd": map[string]interface{}{
 				"image": map[string]interface{}{
@@ -174,16 +174,10 @@ func NewNvdpSpec(destDir string, options map[string]interface{}) *ChartSpec {
 	}
 }
 
-func setDefaultChart(spec **ChartSpec, newFn func(string, map[string]interface{}) *ChartSpec, destDir string) {
-	if *spec == nil {
-		*spec = newFn(destDir, nil)
-	}
-}
-
 func WithDestDir(dir string) BundleSpecOption {
 	return func(bs *BundleSpec) {
 		bs.DestDir = dir
-		bs.K3s.DestDir = dir
+		bs.K3s.BaseDir = dir
 		bs.Csghub.OutPath = dir
 		bs.Longhorn.OutPath = dir
 		bs.Nvdp.OutPath = dir
@@ -193,9 +187,9 @@ func WithDestDir(dir string) BundleSpecOption {
 func WithK3sVersion(ver string) BundleSpecOption {
 	return func(bs *BundleSpec) {
 		if bs.K3s == nil {
-			bs.K3s = NewK3sSpec(bs.DestDir)
+			bs.K3s = NewK3sSpec()
 		}
-		bs.K3s.Version = ver
+		bs.K3s.InstallEnvs = append(bs.K3s.InstallEnvs, "INSTALL_K3S_VERSION="+ver)
 	}
 }
 
@@ -208,7 +202,7 @@ func WithK3sSkip(skip bool) BundleSpecOption {
 func WithK3sEnvs(envs []string) BundleSpecOption {
 	return func(bs *BundleSpec) {
 		if bs.K3s == nil {
-			bs.K3s = NewK3sSpec(bs.DestDir)
+			bs.K3s = NewK3sSpec()
 		}
 		bs.K3s.InstallEnvs = append(bs.K3s.InstallEnvs, envs...)
 	}
@@ -217,7 +211,7 @@ func WithK3sEnvs(envs []string) BundleSpecOption {
 func WithK3sArgs(args []string) BundleSpecOption {
 	return func(bs *BundleSpec) {
 		if bs.K3s == nil {
-			bs.K3s = NewK3sSpec(bs.DestDir)
+			bs.K3s = NewK3sSpec()
 		}
 
 		if !bs.SkipNvdp {

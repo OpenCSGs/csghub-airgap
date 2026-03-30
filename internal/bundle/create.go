@@ -19,7 +19,7 @@ func (s *Spec) Create() error {
 	}
 
 	if !s.SkipK3s {
-		if err := k3s.DownloadK3S(s.K3s); err != nil {
+		if err := k3s.Download(s.K3s); err != nil {
 			return err
 		}
 	}
