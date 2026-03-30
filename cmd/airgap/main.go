@@ -58,16 +58,6 @@ func createCommand() *cli.Command {
 				Usage:   "Skip k3s offline",
 				Value:   false,
 			},
-			//&cli.StringSliceFlag{
-			//	Name:    "k3s-env",
-			//	Aliases: []string{"ke"},
-			//	Usage:   "Set k3s install environments",
-			//},
-			//&cli.StringSliceFlag{
-			//	Name:    "k3s-arg",
-			//	Aliases: []string{"ka"},
-			//	Usage:   "Set k3s install arguments",
-			//},
 
 			// ===== CSGHub =====
 			&cli.StringFlag{
@@ -134,14 +124,6 @@ func createCommand() *cli.Command {
 			}
 
 			opts = append(opts, spec.WithK3sSkip(c.Bool("skip-k3s")))
-
-			//if k3sEnvs := c.StringSlice("k3s-env"); len(k3sEnvs) > 0 {
-			//	opts = append(opts, spec.WithK3sEnvs(k3sEnvs))
-			//}
-			//
-			//if k3sArgs := c.StringSlice("k3s-arg"); len(k3sArgs) > 0 {
-			//	opts = append(opts, spec.WithK3sArgs(k3sArgs))
-			//}
 
 			// ===== chart version =====
 			// ===== CSGHub =====
