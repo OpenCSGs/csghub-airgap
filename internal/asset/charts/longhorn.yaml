@@ -1,0 +1,36 @@
+weight: 1
+depends_on: []
+
+name: longhorn
+enabled: true
+
+repo_name: longhorn
+repo_url: https://charts.opencsg.com/repository/longhorn/
+
+chart_name: longhorn
+chart_version: ""
+
+values:
+  global:
+    imageRegistry: opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq
+
+  persistence:
+    backupTargetName: ""
+    defaultClassReplicaCount: 1
+    # defaultDataLocality: best-effort
+
+  csi:
+    attacherReplicaCount: 1
+    provisionerReplicaCount: 1
+    resizerReplicaCount: 1
+    snapshotterReplicaCount: 1
+
+  defaultSettings:
+    defaultDataPath: /var/lib/longhorn/
+    storageOverProvisioningPercentage: 3000
+    storageMinimalAvailablePercentage: 10
+    storageReservedPercentageForDefaultDisk: 10
+    defaultReplicaCount: 1
+
+  longhornUI:
+    replicas: 1

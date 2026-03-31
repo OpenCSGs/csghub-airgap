@@ -1,8 +1,8 @@
 package k3s
 
 import (
+	"csghub-airgap/internal/infra/file"
 	"csghub-airgap/internal/spec"
-	"csghub-airgap/internal/utils"
 	"fmt"
 	"net/url"
 	"os"
@@ -49,7 +49,7 @@ func Download(ks *spec.K3sSpec) error {
 			return fmt.Errorf("cannot parse url %s: %v", asset.Src, err)
 		}
 
-		if err := utils.DownloadFile(URL.String(), asset.Dest); err != nil {
+		if err := file.DownloadFile(URL.String(), asset.Dest); err != nil {
 			return err
 		}
 

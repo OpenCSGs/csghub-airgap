@@ -3,10 +3,10 @@ package main
 import (
 	"csghub-airgap/internal/bundle"
 	"csghub-airgap/internal/config"
-	"csghub-airgap/internal/flag"
+	"csghub-airgap/internal/infra/user"
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
-	"csghub-airgap/internal/utils"
+	"csghub-airgap/internal/utils/flag"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -107,7 +107,7 @@ func createCommand() *cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) error {
-			if err := utils.EnsureRoot(); err != nil {
+			if err := user.EnsureRoot(); err != nil {
 				return err
 			}
 
@@ -251,7 +251,7 @@ func deployCommand() *cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) error {
-			if err := utils.EnsureRoot(); err != nil {
+			if err := user.EnsureRoot(); err != nil {
 				return err
 			}
 
@@ -372,7 +372,7 @@ func cleanupCommand() *cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) error {
-			if err := utils.EnsureRoot(); err != nil {
+			if err := user.EnsureRoot(); err != nil {
 				return err
 			}
 

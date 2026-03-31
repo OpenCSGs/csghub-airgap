@@ -1,0 +1,24 @@
+weight: 2
+depends_on: []
+
+name: nvdp
+enabled: true
+
+repo_name: nvdp
+repo_url: https://charts.opencsg.com/k8s-device-plugin/
+
+chart_name: nvidia-device-plugin
+chart_version: ""
+
+values:
+  nfd:
+    image:
+      repository: opencsg-registry.example.com/nfd/node-feature-discovery
+
+  image:
+    repository: opencsg-registry.example.com/nvidia/k8s-device-plugin
+
+  gfd:
+    enabled: true
+
+  runtimeClassName: nvidia

@@ -1,4 +1,4 @@
-package utils
+package file
 
 import (
 	"csghub-airgap/internal/log"
@@ -24,8 +24,7 @@ const (
 func DownloadFile(url, savePath string) error {
 	dir := filepath.Dir(savePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		log.Errorf("Failed to create directory %s: %v", dir, err)
-		return err
+		return fmt.Errorf("failed to create directory %s: %w", dir, err)
 	}
 
 	var lastErr error
@@ -108,7 +107,8 @@ func downloadOnce(url, savePath string, timeout int) error {
 			}
 			log.Infof("Partial file found, resuming from: %d/%d", startPos, fileSize)
 		} else {
-			log.Infof("Partial file found, resuming from: %d", startPos)
+			log.Infof("File exists and Content-Length not provided, skipping download: %s", filepath.Base(savePath))
+			return nil
 		}
 	}
 

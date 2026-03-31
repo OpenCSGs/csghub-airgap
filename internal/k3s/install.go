@@ -1,9 +1,11 @@
 package k3s
 
 import (
+	"csghub-airgap/internal/infra/shell"
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
 	"csghub-airgap/internal/utils"
+	"csghub-airgap/internal/utils/extract"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -51,7 +53,7 @@ func Install(ks *spec.K3sSpec) error {
 				continue
 			}
 
-			if err := utils.ExtractTarGz(asset.Src, asset.Dest); err != nil {
+			if err := extract.UnTarGz(asset.Src, asset.Dest); err != nil {
 				return err
 			}
 
@@ -102,7 +104,7 @@ func Install(ks *spec.K3sSpec) error {
 	// 5. Exec Install
 	log.Debugf("K3S install command: %s", ks.InstallCmd())
 
-	if err := utils.ExecCommand("/bin/bash", "-c", ks.InstallCmd()); err != nil {
+	if err := shell.Execute("/bin/bash", "-c", ks.InstallCmd()); err != nil {
 		return err
 	}
 
@@ -140,6 +142,6 @@ ip addr add 203.0.113.254/31 dev dummy0 &&
 ip route add default via 203.0.113.255 dev dummy0 metric 1000)
 `
 
-	_ = utils.ExecCommand("bash", "-c", cmdStr)
+	_ = shell.Execute("bash", "-c", cmdStr)
 	return nil
 }

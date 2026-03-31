@@ -3,7 +3,6 @@ package utils
 import (
 	"bytes"
 	"csghub-airgap/internal/log"
-	"csghub-airgap/internal/utils"
 	"regexp"
 	"strings"
 	"text/template"
@@ -106,7 +105,7 @@ func Extract(manifest string) []string {
 	imgRegex2 := regexp.MustCompile(`^[a-zA-Z0-9\.-]+(:[0-9]+)?/[a-zA-Z0-9_\-./]+(:[a-zA-Z0-9_\-\.]+|@sha256:[a-f0-9]{64})$`)
 
 	imageSet := make(map[string]struct{})
-	for _, img := range utils.ExtractByRegex(manifest, imgRegex1) {
+	for _, img := range ExtractByRegex(manifest, imgRegex1) {
 		if imgRegex2.MatchString(img) {
 			imageSet[img] = struct{}{}
 		}
@@ -118,6 +117,30 @@ func Extract(manifest string) []string {
 	}
 
 	return images
+}
+
+// ExtractByRegex extracts all unique matches from the given manifest string
+// based on the provided regular expression pattern. The pattern must contain
+// at least one capturing group. Returns a slice of matched strings with duplicates removed.
+func ExtractByRegex(manifest string, pattern string) []string {
+	var results []string
+	seen := make(map[string]struct{})
+
+	re := regexp.MustCompile(pattern)
+	matches := re.FindAllStringSubmatch(manifest, -1)
+
+	for _, match := range matches {
+		if len(match) < 2 {
+			continue
+		}
+		item := match[1]
+		if _, ok := seen[item]; !ok {
+			results = append(results, item)
+			seen[item] = struct{}{}
+		}
+	}
+
+	return results
 }
 
 // Walk traverse map/slice, supports * wildcard

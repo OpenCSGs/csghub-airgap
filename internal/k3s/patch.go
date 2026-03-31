@@ -1,8 +1,9 @@
 package k3s
 
 import (
+	"csghub-airgap/internal/infra/net"
+	"csghub-airgap/internal/infra/shell"
 	"csghub-airgap/internal/spec"
-	"csghub-airgap/internal/utils"
 	"fmt"
 	"path/filepath"
 )
@@ -10,18 +11,18 @@ import (
 func PatchInstall(ks *spec.K3sSpec, domain string) error {
 	patchScript := filepath.Join(filepath.Dir(ks.ScriptPath()), "k3s-patch.sh")
 
-	defaultIfaceName, err := utils.GetDefaultInterface()
+	defaultIfaceName, err := net.GetDefaultInterface()
 	if err != nil {
 		return err
 	}
 
-	ip, err := utils.GetInterfaceIP(defaultIfaceName)
+	ip, err := net.GetInterfaceIP(defaultIfaceName)
 	if err != nil {
 		return err
 	}
 
 	cmd := fmt.Sprintf("DOMAIN=%s TARGET_IP=%s bash %s", domain, ip, patchScript)
-	if err = utils.ExecCommand("/bin/bash", "-c", cmd); err != nil {
+	if err = shell.Execute("/bin/bash", "-c", cmd); err != nil {
 		return err
 	}
 

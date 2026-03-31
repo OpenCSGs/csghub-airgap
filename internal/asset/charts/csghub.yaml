@@ -1,0 +1,44 @@
+weight: 5
+depends_on: ["longhorn"]
+
+name: csghub
+enabled: true
+
+repo_name: csghub
+repo_url: https://charts.opencsg.com/csghub/
+
+chart_name: csghub
+chart_version: ""
+
+values:
+  global:
+    edition: ee
+    image:
+      registry: csghub-registry.example.com
+    imageRegistry: csghub-registry.example.com/namespace
+    gateway:
+      external:
+        domain: csghub.example.com
+
+  server:
+    gitlabShell:
+      sshPort: "2222"
+
+  runner:
+    registry:
+      repository: csghub
+    volcano:
+      basic:
+        image_pull_policy: IfNotPresent
+    argo:
+      images:
+        pullPolicy: IfNotPresent
+      controller:
+        image:
+          registry: csghub-registry.example.com/namespace
+      executor:
+        image:
+          registry: csghub-registry.example.com/namespace
+      server:
+        image:
+          registry: csghub-registry.example.com/namespace

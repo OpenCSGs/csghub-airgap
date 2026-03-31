@@ -4,10 +4,10 @@ import (
 	"csghub-airgap/internal/chart"
 	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/image"
+	"csghub-airgap/internal/infra/kernel"
+	"csghub-airgap/internal/infra/pkg"
 	"csghub-airgap/internal/k3s"
-	"csghub-airgap/internal/kernel"
 	"csghub-airgap/internal/log"
-	"csghub-airgap/internal/pack"
 	"csghub-airgap/internal/spec"
 	"csghub-airgap/internal/utils"
 	"strings"
@@ -18,11 +18,11 @@ func (s *Spec) Deploy() error {
 		return err
 	}
 
-	if err := pack.InstallPackages(s.DestDir); err != nil {
+	if err := pkg.Install(s.DestDir); err != nil {
 		return err
 	}
 
-	if err := kernel.SetSysctl(nil); err != nil {
+	if err := kernel.SetParams(nil); err != nil {
 		return err
 	}
 

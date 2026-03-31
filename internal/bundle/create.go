@@ -3,19 +3,19 @@ package bundle
 import (
 	"csghub-airgap/internal/chart"
 	iu "csghub-airgap/internal/image/utils"
+	"csghub-airgap/internal/infra/os"
+	"csghub-airgap/internal/infra/pkg"
 	"csghub-airgap/internal/k3s"
 	"csghub-airgap/internal/log"
-	"csghub-airgap/internal/pack"
 	"csghub-airgap/internal/spec"
-	"csghub-airgap/internal/utils"
 )
 
 func (s *Spec) Create() error {
-	if err := utils.CheckArch(); err != nil {
+	if err := os.CheckArch(); err != nil {
 		return err
 	}
 
-	if err := pack.PreparePackages(s.DestDir); err != nil {
+	if err := pkg.Download(s.DestDir); err != nil {
 		return err
 	}
 

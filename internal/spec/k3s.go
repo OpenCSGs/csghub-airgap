@@ -2,8 +2,8 @@ package spec
 
 import (
 	"csghub-airgap/internal/config"
+	"csghub-airgap/internal/infra/net"
 	"csghub-airgap/internal/log"
-	"csghub-airgap/internal/utils"
 	"fmt"
 	"net/url"
 	"path/filepath"
@@ -22,7 +22,7 @@ type K3sSpec struct {
 }
 
 func NewK3sSpec() *K3sSpec {
-	defaultInterface, err := utils.GetDefaultInterface()
+	defaultInterface, err := net.GetDefaultInterface()
 	if err != nil {
 		log.Fatalf("failed to get default interface: %v", err)
 	}
