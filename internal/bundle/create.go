@@ -7,10 +7,11 @@ import (
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/pack"
 	"csghub-airgap/internal/spec"
+	"csghub-airgap/internal/utils"
 )
 
 func (s *Spec) Create() error {
-	if err := checkArch(); err != nil {
+	if err := utils.CheckArch(); err != nil {
 		return err
 	}
 
