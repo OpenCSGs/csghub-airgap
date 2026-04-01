@@ -12,7 +12,7 @@ func main() {
 	app := &cli.App{
 		Name:    "csghub-airgap",
 		Usage:   "Create or Deploy CSGHub with airgap bundle",
-		Version: "1.17.0",
+		Version: "1.18.0",
 		Commands: []*cli.Command{
 			command.Create(),
 			command.Deploy(),
