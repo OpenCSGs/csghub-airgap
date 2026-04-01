@@ -9,7 +9,7 @@ import (
 	"helm.sh/helm/v3/pkg/registry"
 )
 
-var helmDriver string = os.Getenv("HELM_DRIVER")
+var helmDriver = os.Getenv("HELM_DRIVER")
 
 func initActionConfig(settings *cli.EnvSettings, logger *log.Logger) (*action.Configuration, error) {
 	return initActionConfigList(settings, logger, false)

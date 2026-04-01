@@ -1,12 +1,10 @@
 package chart
 
 import (
-	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/image"
 	iu "csghub-airgap/internal/image/utils"
 	"csghub-airgap/internal/log"
 	is "csghub-airgap/internal/spec"
-	"csghub-airgap/internal/utils"
 	"fmt"
 	"strings"
 )
@@ -21,7 +19,7 @@ var (
 				Path:     "image.csi.*",
 				Template: "{{ if .registry }}{{ .registry }}/{{ else }}docker.io/{{ end }}{{ .repository }}:{{ .tag }}",
 				ReplaceFunc: func(img string) string {
-					return strings.Replace(img, "docker.io", config.DefaultRegistryWithNamespace, 1)
+					return strings.Replace(img, "docker.io", "opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq", 1)
 				},
 			},
 			{
@@ -29,7 +27,7 @@ var (
 				Path:     "image.longhorn.*",
 				Template: "{{ if .registry }}{{ .registry }}/{{ else }}docker.io/{{ end }}{{ .repository }}:{{ .tag }}",
 				ReplaceFunc: func(img string) string {
-					return strings.Replace(img, "docker.io", config.DefaultRegistryWithNamespace, 1)
+					return strings.Replace(img, "docker.io", "opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq", 1)
 				},
 			},
 		},
@@ -43,7 +41,7 @@ var (
 				Path:     "spec.registry.override.*",
 				Template: "{{ . }}",
 				ReplaceFunc: func(img string) string {
-					return strings.Replace(img, "gcr.io", config.DefaultRegistryWithNamespace, 1)
+					return strings.Replace(img, "gcr.io", "opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq", 1)
 				},
 			},
 		},
@@ -82,7 +80,7 @@ func Image(spec *is.ChartSpec, opts iu.ExtractOption) error {
 	switch spec.RepoName {
 	case "csghub":
 		for _, img := range imageList {
-			images = append(images, fmt.Sprintf("%s/%s", config.DefaultRegistryWithNamespace, img))
+			images = append(images, fmt.Sprintf("%s/%s", "opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq", img))
 		}
 	}
 
@@ -90,7 +88,6 @@ func Image(spec *is.ChartSpec, opts iu.ExtractOption) error {
 
 	imageSpec := &is.ImageSpec{
 		Images:       images,
-		OutPath:      utils.NVL(spec.OutPath, config.DefaultBaseDir),
 		ChartName:    spec.ChartName,
 		ChartVersion: spec.ChartVersion,
 	}

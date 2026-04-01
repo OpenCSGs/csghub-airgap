@@ -62,12 +62,12 @@ func Pull(spec *spec.ChartSpec) error {
 func runPull(logger *logger.Logger, settings *cli.EnvSettings, chartRef, chartVersion, destDir string) error {
 	actionConfig, err := initActionConfig(settings, logger)
 	if err != nil {
-		return fmt.Errorf("failed to init action config: %w", err)
+		return fmt.Errorf("failed to init action config: %v", err)
 	}
 
 	registryClient, err := newRegistryClient(settings, false)
 	if err != nil {
-		return fmt.Errorf("failed to created registry client: %w", err)
+		return fmt.Errorf("failed to created registry client: %v", err)
 	}
 	actionConfig.RegistryClient = registryClient
 
@@ -80,7 +80,7 @@ func runPull(logger *logger.Logger, settings *cli.EnvSettings, chartRef, chartVe
 
 	result, err := pullClient.Run(chartRef)
 	if err != nil {
-		return fmt.Errorf("failed to pull chart: %w", err)
+		return fmt.Errorf("failed to pull chart: %v", err)
 	}
 
 	log.Debugf("%+v", result)

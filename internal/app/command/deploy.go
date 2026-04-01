@@ -1,0 +1,104 @@
+package command
+
+import (
+	"csghub-airgap/internal/app/bundle"
+	"csghub-airgap/internal/app/metadata"
+	"csghub-airgap/internal/config"
+	"csghub-airgap/internal/infra/user"
+	"csghub-airgap/internal/log"
+
+	"github.com/urfave/cli/v2"
+)
+
+func Deploy() *cli.Command {
+	return &cli.Command{
+		Name:  "deploy",
+		Usage: "Deploy csghub from offline bundle",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:     "input",
+				Aliases:  []string{"i"},
+				Category: ">\u200BGlobal Settings",
+				Usage:    "Input bundle directory",
+				Value:    config.DefaultBaseDir,
+			},
+			&cli.BoolFlag{
+				Name:     "debug",
+				Aliases:  []string{"d"},
+				Category: ">\u200BGlobal Settings",
+				Usage:    "Enable debug logging",
+			},
+			&cli.BoolFlag{
+				Name:     "skip-k3s",
+				Category: "> \u200CK3s Settings",
+				Usage:    "Skip K3s installation",
+			},
+			&cli.StringSliceFlag{
+				Name:     "k3s-env",
+				Category: "> \u200CK3s Settings",
+				Usage:    "Extra environment variables for K3s (KEY=VALUE)",
+			},
+			&cli.StringSliceFlag{
+				Name:     "k3s-arg",
+				Category: "> \u200CK3s Settings",
+				Usage:    "Extra CLI arguments for K3s (--k3s-arg=--default-runtime=nvidia)",
+			},
+			&cli.StringFlag{
+				Name:     "data",
+				Aliases:  []string{"D"},
+				Category: "> \u200CK3s Settings",
+				Usage:    "Specify data directory for K3s and Longhorn",
+			},
+			&cli.StringFlag{
+				Name:     "csghub-domain",
+				Aliases:  []string{"cd"},
+				Category: "> \u200DCharts Settings",
+				Usage:    "Specify csghub domain",
+				Value:    "csghub.example.com",
+			},
+			&cli.BoolFlag{
+				Name:     "skip-longhorn",
+				Category: "> \u200DCharts Settings",
+				Usage:    "Skip Longhorn installation",
+			},
+			&cli.BoolFlag{
+				Name:     "skip-nvdp",
+				Category: "> \u200DCharts Settings",
+				Usage:    "Skip NVDP installation",
+				Value:    true,
+			},
+			&cli.StringSliceFlag{
+				Name:     "set",
+				Aliases:  []string{"s"},
+				Category: "> \u200DCharts Settings",
+				Usage:    "Set Helm values (e.g. csghub.key=value, supports multiple)",
+			},
+		},
+		Action: func(c *cli.Context) error {
+			// init logging
+			log.Init(c.Bool("debug"))
+
+			// Load manifest from YAMLs
+			config.InitBaseDir(c)
+
+			// Run as user root
+			if err := user.EnsureRoot(); err != nil {
+				return err
+			}
+
+			// load spec
+			bs, err := metadata.Load()
+			if err != nil {
+				return err
+			}
+
+			// apply CLI overrides
+			if err := ApplyOverrides(bs, c); err != nil {
+				return err
+			}
+
+			// build bundle
+			return bundle.NewFromSpec(bs).Deploy()
+		},
+	}
+}

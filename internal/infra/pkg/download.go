@@ -3,6 +3,7 @@ package pkg
 import (
 	osi "csghub-airgap/internal/infra/os"
 	"csghub-airgap/internal/infra/shell"
+	"csghub-airgap/internal/infra/user"
 	"csghub-airgap/internal/log"
 	"fmt"
 	"os"
@@ -25,6 +26,10 @@ var packages = []string{
 func Download(destDir string) error {
 	if runtime.GOOS != "linux" {
 		return nil
+	}
+
+	if err := user.EnsureRoot(); err != nil {
+		return err
 	}
 
 	absDestDir, err := filepath.Abs(destDir)

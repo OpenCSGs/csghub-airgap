@@ -39,8 +39,8 @@ func Install(spec *spec.ChartSpec) error {
 
 	// Values (can be empty)
 	values := map[string]interface{}{}
-	if spec.ChartOptions != nil {
-		values = spec.ChartOptions
+	if spec.Values != nil {
+		values = spec.Values
 	}
 
 	// Run install
@@ -55,7 +55,7 @@ func Install(spec *spec.ChartSpec) error {
 func runInstall(ctx context.Context, logger *logger.Logger, settings *cli.EnvSettings, releaseName string, chartRef string, chartVersion string, releaseValues map[string]interface{}) error {
 	actionConfig, err := initActionConfig(settings, logger)
 	if err != nil {
-		return fmt.Errorf("failed to init action config: %w", err)
+		return fmt.Errorf("failed to init action config: %v", err)
 	}
 
 	installClient := action.NewInstall(actionConfig)
@@ -75,7 +75,7 @@ func runInstall(ctx context.Context, logger *logger.Logger, settings *cli.EnvSet
 		installClient.InsecureSkipTLSverify,
 		installClient.PlainHTTP)
 	if err != nil {
-		return fmt.Errorf("failed to created registry client: %w", err)
+		return fmt.Errorf("failed to created registry client: %v", err)
 	}
 	installClient.SetRegistryClient(registryClient)
 
@@ -94,7 +94,7 @@ func runInstall(ctx context.Context, logger *logger.Logger, settings *cli.EnvSet
 	// Check chart dependencies to make sure all are present in /charts
 	if chartDependencies := chart.Metadata.Dependencies; chartDependencies != nil {
 		if err := action.CheckDependencies(chart, chartDependencies); err != nil {
-			err = fmt.Errorf("failed to check chart dependencies: %w", err)
+			err = fmt.Errorf("failed to check chart dependencies: %v", err)
 			if !installClient.DependencyUpdate {
 				return err
 			}
@@ -115,14 +115,14 @@ func runInstall(ctx context.Context, logger *logger.Logger, settings *cli.EnvSet
 			}
 			// Reload the chart with the updated Chart.lock file.
 			if chart, err = loader.Load(chartPath); err != nil {
-				return fmt.Errorf("failed to reload chart after repo update: %w", err)
+				return fmt.Errorf("failed to reload chart after repo update: %v", err)
 			}
 		}
 	}
 
 	release, err := installClient.RunWithContext(ctx, chart, releaseValues)
 	if err != nil {
-		return fmt.Errorf("failed to run install: %w", err)
+		return fmt.Errorf("failed to run install: %v", err)
 	}
 
 	log.Debugf("release created:\n%+v", *release)

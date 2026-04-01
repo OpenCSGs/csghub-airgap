@@ -53,7 +53,7 @@ func CopyFile(src, dst string, bufferSize ...int64) error {
 
 	// Ensure permissions are same as source
 	if err := os.Chmod(dst, mode.Perm()); err != nil {
-		return fmt.Errorf("failed to set permissions on %s: %w", dst, err)
+		return fmt.Errorf("failed to set permissions on %s: %v", dst, err)
 	}
 
 	return nil

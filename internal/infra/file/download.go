@@ -24,7 +24,7 @@ const (
 func DownloadFile(url, savePath string) error {
 	dir := filepath.Dir(savePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", dir, err)
+		return fmt.Errorf("failed to create directory %s: %v", dir, err)
 	}
 
 	var lastErr error

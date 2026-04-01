@@ -40,7 +40,7 @@ func Uninstall(spec *spec.ChartSpec) error {
 func runUninstall(logger *logger.Logger, settings *cli.EnvSettings, releaseName string) error {
 	actionConfig, err := initActionConfig(settings, logger)
 	if err != nil {
-		return fmt.Errorf("failed to init action config: %w", err)
+		return fmt.Errorf("failed to init action config: %v", err)
 	}
 
 	uninstallClient := action.NewUninstall(actionConfig)
@@ -48,7 +48,7 @@ func runUninstall(logger *logger.Logger, settings *cli.EnvSettings, releaseName 
 
 	result, err := uninstallClient.Run(releaseName)
 	if err != nil {
-		return fmt.Errorf("failed to run uninstall action: %w", err)
+		return fmt.Errorf("failed to run uninstall action: %v", err)
 	}
 	if result != nil {
 		logger.Printf("result: %+v\n", *result.Release)

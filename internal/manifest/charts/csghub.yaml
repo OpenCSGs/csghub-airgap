@@ -1,4 +1,4 @@
-weight: 5
+weight: 7
 depends_on: ["longhorn"]
 
 name: csghub
@@ -14,8 +14,8 @@ values:
   global:
     edition: ee
     image:
-      registry: csghub-registry.example.com
-    imageRegistry: csghub-registry.example.com/namespace
+      registry: opencsg-registry.cn-beijing.cr.aliyuncs.com
+    imageRegistry: opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq
     gateway:
       external:
         domain: csghub.example.com
@@ -30,15 +30,19 @@ values:
     volcano:
       basic:
         image_pull_policy: IfNotPresent
+    lws:
+      image:
+        manager:
+          repository: opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq/lws
     argo:
       images:
         pullPolicy: IfNotPresent
       controller:
         image:
-          registry: csghub-registry.example.com/namespace
+          registry: opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq
       executor:
         image:
-          registry: csghub-registry.example.com/namespace
+          registry: opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq
       server:
         image:
-          registry: csghub-registry.example.com/namespace
+          registry: opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq

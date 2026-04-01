@@ -74,3 +74,32 @@ func GetNestedString(m map[string]interface{}, keys ...string) (string, bool) {
 	val, ok := current.(string)
 	return val, ok
 }
+
+// SetNestedString sets a string value at a nested path in a map[string]interface{}.
+// It creates intermediate maps if they do not exist.
+func SetNestedString(m map[string]interface{}, value string, keys ...string) {
+	if len(keys) == 0 {
+		return
+	}
+
+	current := m
+	for _, k := range keys[:len(keys)-1] {
+		if next, ok := current[k]; ok {
+			if nextMap, ok2 := next.(map[string]interface{}); ok2 {
+				current = nextMap
+			} else {
+				// overwrite non-map with a new map
+				newMap := make(map[string]interface{})
+				current[k] = newMap
+				current = newMap
+			}
+		} else {
+			newMap := make(map[string]interface{})
+			current[k] = newMap
+			current = newMap
+		}
+	}
+
+	// set the final key to the value
+	current[keys[len(keys)-1]] = value
+}

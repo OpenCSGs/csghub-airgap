@@ -102,7 +102,7 @@ func ExtractImagesFromGeneric(values map[string]interface{}, rules []ExtractRule
 // Extract all images from Manifests
 func Extract(manifest string) []string {
 	imgRegex1 := `image:\s*["']?([a-zA-Z0-9./:-]+(?:@[a-f0-9]+)?)["']?`
-	imgRegex2 := regexp.MustCompile(`^[a-zA-Z0-9\.-]+(:[0-9]+)?/[a-zA-Z0-9_\-./]+(:[a-zA-Z0-9_\-\.]+|@sha256:[a-f0-9]{64})$`)
+	imgRegex2 := regexp.MustCompile(`^[a-zA-Z0-9.-]+(:[0-9]+)?/[a-zA-Z0-9_\-./]+(:[a-zA-Z0-9_\-.]+|@sha256:[a-f0-9]{64})$`)
 
 	imageSet := make(map[string]struct{})
 	for _, img := range ExtractByRegex(manifest, imgRegex1) {
@@ -158,12 +158,8 @@ func Walk(data interface{}, path []string) []interface{} {
 				result = append(result, Walk(v, path[1:])...)
 			}
 			return result
-		} else {
-			if v, ok := node[key]; ok {
-				return Walk(v, path[1:])
-			}
 		}
-	case map[interface{}]interface{}: // May appear when unmarshaling YAML
+	case map[interface{}]interface{}:
 		key := path[0]
 		if key == "*" {
 			var result []interface{}
@@ -171,10 +167,6 @@ func Walk(data interface{}, path []string) []interface{} {
 				result = append(result, Walk(v, path[1:])...)
 			}
 			return result
-		} else {
-			if v, ok := node[key]; ok {
-				return Walk(v, path[1:])
-			}
 		}
 	case []interface{}:
 		var result []interface{}

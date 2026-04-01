@@ -1,4 +1,4 @@
-package asset
+package manifest
 
 import (
 	"embed"
@@ -10,12 +10,12 @@ import (
 //go:embed charts/*.yaml
 var ManifestsFS embed.FS
 
-func Load() ([]string, error) {
+func LoadYAML() ([]string, error) {
 	var contents []string
 
 	files, err := fs.ReadDir(ManifestsFS, "charts")
 	if err != nil {
-		return nil, fmt.Errorf("failed to read charts directory: %w", err)
+		return nil, fmt.Errorf("failed to read charts directory: %v", err)
 	}
 
 	for _, f := range files {
@@ -26,7 +26,7 @@ func Load() ([]string, error) {
 		path := "charts/" + f.Name()
 		data, err := fs.ReadFile(ManifestsFS, path)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read embedded file %s: %w", path, err)
+			return nil, fmt.Errorf("failed to read embedded file %s: %v", path, err)
 		}
 
 		contents = append(contents, string(data))

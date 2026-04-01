@@ -2,7 +2,9 @@ package k3s
 
 import (
 	"csghub-airgap/internal/infra/file"
+	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -42,6 +44,11 @@ func Download(ks *spec.K3sSpec) error {
 			Executable: true,
 		},
 	}
+
+	log.DebugFunc(func() string {
+		data, _ := json.Marshal(assets)
+		return fmt.Sprintf("Downloading assets: %s", data)
+	})
 
 	for _, asset := range assets {
 		URL, err := url.Parse(asset.Src)

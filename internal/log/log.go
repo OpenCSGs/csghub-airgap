@@ -86,6 +86,12 @@ func Fatalf(format string, args ...interface{}) {
 	Log.Fatalf(format, args...)
 }
 
+func DebugFunc(f func() string) {
+	if Log.IsLevelEnabled(logrus.DebugLevel) {
+		Debug(f())
+	}
+}
+
 func SetOutput(w io.Writer) {
 	if w == nil {
 		return

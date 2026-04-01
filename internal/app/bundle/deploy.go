@@ -5,20 +5,24 @@ import (
 	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/image"
 	"csghub-airgap/internal/infra/kernel"
+	"csghub-airgap/internal/infra/os"
 	"csghub-airgap/internal/infra/pkg"
 	"csghub-airgap/internal/k3s"
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
 	"csghub-airgap/internal/utils"
 	"strings"
+	"time"
 )
 
 func (s *Spec) Deploy() error {
-	if err := checkArch(); err != nil {
+	start := time.Now()
+
+	if err := os.CheckArch(); err != nil {
 		return err
 	}
 
-	if err := pkg.Install(s.DestDir); err != nil {
+	if err := pkg.InstallFrom(config.DefaultBaseDir); err != nil {
 		return err
 	}
 
@@ -32,24 +36,9 @@ func (s *Spec) Deploy() error {
 		}
 	}
 
-	var charts []*spec.ChartSpec
-
-	if !s.SkipLonghorn {
-		charts = append(charts, s.Longhorn)
-	}
-
-	if !s.SkipNvdp {
-		charts = append(charts, s.Nvdp)
-
-		log.Warn("NVIDIA GPU are not included in the Airgap installation")
-	}
-
-	charts = append(charts, s.Csghub)
-
-	for _, c := range charts {
+	for _, c := range s.Charts {
 		imageSpec := &spec.ImageSpec{
 			Images:       nil,
-			OutPath:      utils.NVL(s.DestDir, config.DefaultBaseDir),
 			ChartName:    c.ChartName,
 			ChartVersion: c.ChartVersion,
 		}
@@ -57,18 +46,25 @@ func (s *Spec) Deploy() error {
 			return err
 		}
 
-		if chart.List(c) {
-			if err := chart.Upgrade(c); err != nil {
+		if chart.List(&c) {
+			if err := chart.Upgrade(&c); err != nil {
 				return err
 			}
 		} else {
-			if err := chart.Install(c); err != nil {
+			if err := chart.Install(&c); err != nil {
 				return err
 			}
 		}
 	}
 
-	domain, _ := utils.GetNestedString(s.Csghub.ChartOptions, "global", "gateway", "external", "domain")
+	var domain string
+	for i := range s.Charts {
+		c := &s.Charts[i]
+		if c.ChartName == "csghub" {
+			domain, _ = utils.GetNestedString(c.Values, "global", "gateway", "external", "domain")
+			break
+		}
+	}
 
 	// Normalize domain:
 	// - If more than 2 labels (e.g. a.b.example.com), keep last two → example.com
@@ -82,7 +78,9 @@ func (s *Spec) Deploy() error {
 		return err
 	}
 
-	log.Warn("Use 'kubectl get pods -n csghub' to check if the applications are ready")
+	log.Warn("Use 'kubectl get pods -n csghub' to check if service is ready")
+
+	log.Infof("Deploy finished in %s", time.Since(start))
 
 	return nil
 }

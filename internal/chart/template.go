@@ -17,13 +17,13 @@ func Template(spec *spec.ChartSpec) (string, error) {
 
 	actionConfig := new(action.Configuration)
 	if err := actionConfig.Init(settings.RESTClientGetter(), "", os.Getenv("HELM_DRIVER"), log.Std.Printf); err != nil {
-		return "", fmt.Errorf("failed to init Helm action config: %w", err)
+		return "", fmt.Errorf("failed to init Helm action config: %v", err)
 	}
 
 	chatFilePath := spec.ChartFilePath()
 	chartObj, err := loader.Load(chatFilePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to load chart from %s: %w", chatFilePath, err)
+		return "", fmt.Errorf("failed to load chart from %s: %v", chatFilePath, err)
 	}
 
 	tmpl := action.NewInstall(actionConfig)
@@ -35,13 +35,13 @@ func Template(spec *spec.ChartSpec) (string, error) {
 
 	kubeVer, err := chartutil.ParseKubeVersion("1.25.0")
 	if err != nil {
-		return "", fmt.Errorf("failed to parse custom kubeVersion: %w", err)
+		return "", fmt.Errorf("failed to parse custom kubeVersion: %v", err)
 	}
 	tmpl.KubeVersion = kubeVer
 
-	release, err := tmpl.Run(chartObj, spec.ChartOptions)
+	release, err := tmpl.Run(chartObj, spec.Values)
 	if err != nil {
-		return "", fmt.Errorf("failed to render chart: %w", err)
+		return "", fmt.Errorf("failed to render chart: %v", err)
 	}
 
 	manifest := release.Manifest

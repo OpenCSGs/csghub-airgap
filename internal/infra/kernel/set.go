@@ -35,7 +35,7 @@ func SetParams(params map[string]string) error {
 	// Open the configuration file for write, create if it doesn't exist, truncate existing.
 	file, err := os.OpenFile(DefaultKernelConfFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		return fmt.Errorf("failed to open kernel config file: %w", err)
+		return fmt.Errorf("failed to open kernel config file: %v", err)
 	}
 	defer file.Close()
 
@@ -43,13 +43,13 @@ func SetParams(params map[string]string) error {
 	for key, val := range merged {
 		_, err = fmt.Fprintf(file, "%s = %s\n", key, val)
 		if err != nil {
-			return fmt.Errorf("failed to write kernel config: %w", err)
+			return fmt.Errorf("failed to write kernel config: %v", err)
 		}
 	}
 
 	log.Info("Applying kernel parameters with sysctl")
 	if err := shell.Execute("sysctl", "-p", DefaultKernelConfFile); err != nil {
-		return fmt.Errorf("failed to apply kernel parameters: %w", err)
+		return fmt.Errorf("failed to apply kernel parameters: %v", err)
 	}
 
 	log.Info("Kernel parameters applied successfully")

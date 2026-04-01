@@ -1,19 +1,19 @@
 package spec
 
 import (
+	"csghub-airgap/internal/config"
 	"fmt"
 	"path/filepath"
 )
 
 type ImageSpec struct {
 	Images       []string `yaml:"images"`
-	OutPath      string   `yaml:"output"`
 	ChartName    string   `yaml:"chart_name"`
 	ChartVersion string   `yaml:"chart_version"`
 }
 
 func (s *ImageSpec) ImageDir() string {
-	return filepath.Join(s.OutPath, s.ChartName, "images")
+	return filepath.Join(config.DefaultBaseDir, s.ChartName, "images")
 }
 
 func (s *ImageSpec) ImageFileName() string {

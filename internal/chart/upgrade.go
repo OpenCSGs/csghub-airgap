@@ -39,8 +39,8 @@ func Upgrade(spec *spec.ChartSpec) error {
 
 	// Values (can be empty)
 	values := map[string]interface{}{}
-	if spec.ChartOptions != nil {
-		values = spec.ChartOptions
+	if spec.Values != nil {
+		values = spec.Values
 	}
 
 	// Run upgrade
@@ -56,7 +56,7 @@ func Upgrade(spec *spec.ChartSpec) error {
 func runUpgrade(ctx context.Context, logger *logger.Logger, settings *cli.EnvSettings, releaseName string, chartRef string, chartVersion string, releaseValues map[string]interface{}) error {
 	actionConfig, err := initActionConfig(settings, logger)
 	if err != nil {
-		return fmt.Errorf("failed to init action config: %w", err)
+		return fmt.Errorf("failed to init action config: %v", err)
 	}
 
 	upgradeClient := action.NewUpgrade(actionConfig)
@@ -75,7 +75,7 @@ func runUpgrade(ctx context.Context, logger *logger.Logger, settings *cli.EnvSet
 		upgradeClient.InsecureSkipTLSverify,
 		upgradeClient.PlainHTTP)
 	if err != nil {
-		return fmt.Errorf("missing registry client: %w", err)
+		return fmt.Errorf("missing registry client: %v", err)
 	}
 
 	upgradeClient.SetRegistryClient(registryClient)
@@ -90,11 +90,11 @@ func runUpgrade(ctx context.Context, logger *logger.Logger, settings *cli.EnvSet
 	// Check chart dependencies to make sure all are present in /charts
 	chart, err := loader.Load(chartPath)
 	if err != nil {
-		return fmt.Errorf("failed to load chart: %w", err)
+		return fmt.Errorf("failed to load chart: %v", err)
 	}
 	if req := chart.Metadata.Dependencies; req != nil {
 		if err := action.CheckDependencies(chart, req); err != nil {
-			err = fmt.Errorf("failed to check chart dependencies: %w", err)
+			err = fmt.Errorf("failed to check chart dependencies: %v", err)
 			if !upgradeClient.DependencyUpdate {
 				return err
 			}
@@ -114,14 +114,14 @@ func runUpgrade(ctx context.Context, logger *logger.Logger, settings *cli.EnvSet
 			}
 			// Reload the chart with the updated Chart.lock file.
 			if chart, err = loader.Load(chartPath); err != nil {
-				return fmt.Errorf("failed to reload chart after repo update: %w", err)
+				return fmt.Errorf("failed to reload chart after repo update: %v", err)
 			}
 		}
 	}
 
 	release, err := upgradeClient.RunWithContext(ctx, releaseName, chart, releaseValues)
 	if err != nil {
-		return fmt.Errorf("failed to run upgrade action: %w", err)
+		return fmt.Errorf("failed to run upgrade action: %v", err)
 	}
 
 	log.Debugf("release: %+v", release)

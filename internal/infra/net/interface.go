@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -71,9 +72,15 @@ func GetInterfaceIP(ifaceName string) (string, error) {
 }
 
 func isPhysicalInterface(name string) bool {
-	path := filepath.Join("/sys/class/net", name, "device")
-	_, err := os.Stat(path)
-	return err == nil
+	// Linux-specific check using /sys/class/net
+	if runtime.GOOS == "linux" {
+		path := filepath.Join("/sys/class/net", name, "device")
+		_, err := os.Stat(path)
+		return err == nil
+	}
+
+	// On macOS and other systems, assume interface is usable
+	return true
 }
 
 func isVirtualInterface(name string) bool {

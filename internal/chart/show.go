@@ -11,26 +11,12 @@ import (
 func ShowChartValues(chartRef string) ([]byte, error) {
 	chart, err := loader.Load(chartRef)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load chart from tgz: %w", err)
+		return nil, fmt.Errorf("failed to load chart from tgz: %v", err)
 	}
 
 	values, err := yaml.Marshal(chart.Values)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert chart values to YAML: %w", err)
-	}
-
-	return values, nil
-}
-
-func ShowChartAll(chartRef string) ([]byte, error) {
-	chart, err := loader.Load(chartRef)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load chart from tgz: %w", err)
-	}
-
-	values, err := yaml.Marshal(chart.Raw)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert chart values to YAML: %w", err)
+		return nil, fmt.Errorf("failed to convert chart values to YAML: %v", err)
 	}
 
 	return values, nil

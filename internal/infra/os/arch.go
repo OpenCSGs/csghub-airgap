@@ -1,14 +1,13 @@
 package os
 
 import (
-	"errors"
 	"fmt"
 	"runtime"
 )
 
 func CheckArch() error {
 	if runtime.GOOS != "linux" {
-		return errors.New("unsupported platform")
+		return fmt.Errorf("unsupported platform: %v", runtime.GOOS)
 	}
 
 	switch runtime.GOARCH {

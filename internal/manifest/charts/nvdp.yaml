@@ -1,4 +1,4 @@
-weight: 2
+weight: 9
 depends_on: []
 
 name: nvdp
@@ -13,10 +13,10 @@ chart_version: ""
 values:
   nfd:
     image:
-      repository: opencsg-registry.example.com/nfd/node-feature-discovery
+      repository: opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq/nfd/node-feature-discovery
 
   image:
-    repository: opencsg-registry.example.com/nvidia/k8s-device-plugin
+    repository: opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq/nvidia/k8s-device-plugin
 
   gfd:
     enabled: true

@@ -21,7 +21,7 @@ func Execute(command string, args ...string) error {
 
 	if err := cmd.Run(); err != nil {
 		fullCmd := strings.Join(append([]string{command}, args...), " ")
-		return fmt.Errorf("command failed: %q: %w", fullCmd, err)
+		return fmt.Errorf("command failed: %q: %v", fullCmd, err)
 	}
 
 	return nil

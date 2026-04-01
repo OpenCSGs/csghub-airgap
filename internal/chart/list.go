@@ -49,7 +49,7 @@ func runList(logger *logger.Logger, settings *cli.EnvSettings) ([]*release.Relea
 
 	actionConfig, err := initActionConfigList(settings, logger, false)
 	if err != nil {
-		return nil, fmt.Errorf("failed to init action config: %w", err)
+		return nil, fmt.Errorf("failed to init action config: %v", err)
 	}
 
 	listClient := action.NewList(actionConfig)
@@ -60,7 +60,7 @@ func runList(logger *logger.Logger, settings *cli.EnvSettings) ([]*release.Relea
 
 	results, err := listClient.Run()
 	if err != nil {
-		return nil, fmt.Errorf("failed to run list action: %w", err)
+		return nil, fmt.Errorf("failed to run list action: %v", err)
 	}
 
 	log.Debugf("Found %d releases", len(results))
@@ -76,7 +76,7 @@ func ListChart(spec *spec.ChartSpec) ([]*semver.Version, error) {
 
 	resp, err := http.Get(indexURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch index.yaml: %w", err)
+		return nil, fmt.Errorf("failed to fetch index.yaml: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -87,7 +87,7 @@ func ListChart(spec *spec.ChartSpec) ([]*semver.Version, error) {
 	indexFile := &repo.IndexFile{}
 	body, _ := io.ReadAll(resp.Body)
 	if err = yaml.Unmarshal(body, indexFile); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal index.yaml: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal index.yaml: %v", err)
 	}
 
 	var versions []*semver.Version
@@ -105,12 +105,14 @@ func ListChart(spec *spec.ChartSpec) ([]*semver.Version, error) {
 	return versions, nil
 }
 
-func LastVersion(spec *spec.ChartSpec) *semver.Version {
+func LatestVersion(spec *spec.ChartSpec) string {
 	versions, err := ListChart(spec)
 	if err != nil {
 		log.Fatalf("failed to list chart versions: %s", err)
-		return nil
+		return ""
 	}
 
-	return versions[len(versions)-1]
+	latestVersion := versions[len(versions)-1]
+
+	return latestVersion.String()
 }

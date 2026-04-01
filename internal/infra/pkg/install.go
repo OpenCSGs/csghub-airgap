@@ -10,9 +10,9 @@ import (
 	"runtime"
 )
 
-// Install installs all previously downloaded NVIDIA toolkit packages from the given destDir.
+// InstallFrom installs all previously downloaded NVIDIA toolkit packages from the given destDir.
 // It detects the OS, finds the package directory, and installs the packages using the appropriate package manager.
-func Install(destDir string) error {
+func InstallFrom(destDir string) error {
 	if runtime.GOOS != "linux" {
 		return nil
 	}

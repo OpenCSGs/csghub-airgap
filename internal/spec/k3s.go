@@ -12,13 +12,12 @@ import (
 )
 
 type K3sSpec struct {
-	ReleaseURL  string   `yaml:"release_url" default:"https://ghfast.top/https://github.com/k3s-io/k3s/releases"`
-	ScriptURL   string   `yaml:"script_url" default:"https://get.k3s.io"`
-	HelmURL     string   `yaml:"helm_url" default:"https://get.helm.sh"`
-	HelmVersion string   `yaml:"helm_version" default:"v3.20.1"`
-	InstallEnvs []string `yaml:"install_envs"`
-	InstallArgs []string `yaml:"install_args"`
-	BaseDir     string   `yaml:"base_dir"`
+	ReleaseURL  string            `yaml:"release_url" default:"https://ghfast.top/https://github.com/k3s-io/k3s/releases"`
+	ScriptURL   string            `yaml:"script_url" default:"https://get.k3s.io"`
+	HelmURL     string            `yaml:"helm_url" default:"https://get.helm.sh"`
+	HelmVersion string            `yaml:"helm_version" default:"v3.20.1"`
+	InstallEnvs map[string]string `yaml:"install_envs"`
+	InstallArgs map[string]string `yaml:"install_args"`
 }
 
 func NewK3sSpec() *K3sSpec {
@@ -30,23 +29,23 @@ func NewK3sSpec() *K3sSpec {
 	return &K3sSpec{
 		ReleaseURL: "https://ghfast.top/https://github.com/k3s-io/k3s/releases",
 		ScriptURL:  "https://get.k3s.io",
-		InstallEnvs: []string{
-			"INSTALL_K3S_VERSION=v1.34.5+k3s1",
+		InstallEnvs: map[string]string{
+			"INSTALL_K3S_SKIP_DOWNLOAD": "true",
+			"INSTALL_K3S_VERSION":       "v1.34.5+k3s1",
 		},
-		InstallArgs: []string{
-			"--node-name=k3s-master",
-			"--disable=traefik",
-			"--kubelet-arg=eviction-hard=",
-			"--flannel-iface=" + defaultInterface,
+		InstallArgs: map[string]string{
+			"--node-name":     "k3s-master",
+			"--disable":       "traefik",
+			"--kubelet-arg":   "eviction-hard=",
+			"--flannel-iface": defaultInterface,
 		},
 		HelmURL:     "https://get.helm.sh",
 		HelmVersion: "v3.20.1",
-		BaseDir:     config.DefaultBaseDir,
 	}
 }
 
 func (ks *K3sSpec) Dir() string {
-	return filepath.Join(ks.BaseDir, "k3s")
+	return filepath.Join(config.DefaultBaseDir, "k3s")
 }
 
 func (ks *K3sSpec) BaseURL() string {
@@ -116,31 +115,35 @@ func (ks *K3sSpec) HelmBinaryPath() string {
 }
 
 func (s *K3sSpec) GetEnv(key string) (string, bool) {
-	for _, env := range s.InstallEnvs {
-		parts := strings.SplitN(env, "=", 2)
-		if len(parts) == 2 && parts[0] == key {
-			return parts[1], true
-		}
-	}
-	return "", false
+	v, ok := s.InstallEnvs[key]
+	return v, ok
 }
 
 func (s *K3sSpec) GetArg(key string) (string, bool) {
-	for _, env := range s.InstallArgs {
-		parts := strings.SplitN(env, "=", 2)
-		if len(parts) == 2 && parts[0] == key {
-			return parts[1], true
-		}
-	}
-	return "", false
+	v, ok := s.InstallArgs[key]
+	return v, ok
 }
 
 func (s *K3sSpec) InstallCmd() string {
+	var envs []string
+	for k, v := range s.InstallEnvs {
+		envs = append(envs, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	var args []string
+	for k, v := range s.InstallArgs {
+		if v == "" {
+			args = append(args, k)
+		} else {
+			args = append(args, fmt.Sprintf("%s=%s", k, v))
+		}
+	}
+
 	return strings.TrimSpace(
 		fmt.Sprintf("%s %s %s",
-			strings.Join(s.InstallEnvs, " "),
+			strings.Join(envs, " "),
 			s.ScriptPath(),
-			strings.Join(s.InstallArgs, " "),
+			strings.Join(args, " "),
 		),
 	)
 }

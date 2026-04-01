@@ -17,7 +17,7 @@ func GetOSID() (string, error) {
 
 	f, err := os.Open("/etc/os-release")
 	if err != nil {
-		return "", fmt.Errorf("failed to open /etc/os-release: %w", err)
+		return "", fmt.Errorf("failed to open /etc/os-release: %v", err)
 	}
 	defer f.Close()
 
@@ -30,7 +30,7 @@ func GetOSID() (string, error) {
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return "", fmt.Errorf("error reading /etc/os-release: %w", err)
+		return "", fmt.Errorf("error reading /etc/os-release: %v", err)
 	}
 
 	return "", fmt.Errorf("could not detect OS ID from /etc/os-release")

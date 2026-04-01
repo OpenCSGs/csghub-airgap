@@ -2,7 +2,7 @@ package flag
 
 import "strings"
 
-func ParseSetFlags(setFlags []string) map[string]interface{} {
+func ParseFlags(setFlags []string) map[string]interface{} {
 	result := make(map[string]interface{})
 
 	for _, item := range setFlags {
@@ -33,13 +33,17 @@ func insertToMap(m map[string]interface{}, key string, value interface{}) {
 
 		if _, ok := current[k]; !ok {
 			current[k] = make(map[string]interface{})
+		} else {
+			if _, ok := current[k].(map[string]interface{}); !ok {
+				current[k] = make(map[string]interface{})
+			}
 		}
 
 		current = current[k].(map[string]interface{})
 	}
 }
 
-func ExtractByPrefix(m map[string]interface{}, prefix string) map[string]interface{} {
+func ParsePrefix(m map[string]interface{}, prefix string) map[string]interface{} {
 	if val, ok := m[prefix]; ok {
 		if subMap, ok2 := val.(map[string]interface{}); ok2 {
 			return subMap

@@ -3,25 +3,60 @@ package spec
 import (
 	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/log"
+	"csghub-airgap/internal/manifest"
 	"csghub-airgap/internal/utils"
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 type ChartSpec struct {
+	Name         string                 `yaml:"name"`
+	Enabled      bool                   `yaml:"enabled"`
 	RepoName     string                 `yaml:"repo_name"`     // Helm repo name
 	RepoURL      string                 `yaml:"repo_url"`      // Helm repo URL
 	ChartName    string                 `yaml:"chart_name"`    // Chart name in the repo
 	ChartVersion string                 `yaml:"chart_version"` // Version, can be empty for latest
-	OutPath      string                 `yaml:"out_path"`      // Local directory to store the chart
-	ChartOptions map[string]interface{} `yaml:"chart_options"` // Render or install options
+	Values       map[string]interface{} `yaml:"values"`
+	Weight       int                    `yaml:"weight,omitempty"`
+	DependsOn    []string               `yaml:"depends_on,omitempty"`
 }
 
-func NewChartSpec(destDir string) *ChartSpec {
-	return &ChartSpec{
-		OutPath: utils.NVL(destDir, config.DefaultBaseDir),
+// NewChartSpec takes a slice of YAML strings representing one or more chart manifests
+// and parses them into a slice of ChartSpec structures.
+//
+// Each element in the 'manifests' slice should be the full YAML content of a chart.
+// The YAML content is expected to represent a single chart manifest (mapping) with fields
+// like 'name', 'enabled', 'repo_name', 'repo_url', 'chart_name', 'chart_version',
+// 'values', 'weight', and 'dependsOn'.
+//
+// The function returns a slice of ChartSpec, where each parsed chart manifest becomes
+// one ChartSpec in the slice. Empty or whitespace-only strings in the slice are ignored.
+func NewChartSpec() ([]ChartSpec, error) {
+	manifests, err := manifest.LoadYAML()
+	if err != nil {
+		return nil, err
 	}
+
+	var allCharts []ChartSpec
+
+	for _, mft := range manifests {
+		if strings.TrimSpace(mft) == "" {
+			continue
+		}
+
+		var charts ChartSpec
+		if err := yaml.Unmarshal([]byte(mft), &charts); err != nil {
+			return nil, fmt.Errorf("failed to parse YAML %s: %v", mft, err)
+		}
+
+		allCharts = append(allCharts, charts)
+	}
+
+	return allCharts, nil
 }
 
 func (cs *ChartSpec) ChartRef() string {
@@ -34,7 +69,7 @@ func (cs *ChartSpec) ChartRef() string {
 }
 
 func (cs *ChartSpec) ChartDir() string {
-	return filepath.Join(cs.OutPath, cs.ChartName, "charts")
+	return filepath.Join(config.DefaultBaseDir, cs.ChartName, "charts")
 }
 
 func (cs *ChartSpec) ChartFileName() string {
@@ -76,32 +111,5 @@ func (cs *ChartSpec) Merge(ds *ChartSpec) {
 		}
 
 		fieldA.Set(fieldB)
-	}
-}
-
-func WithCsghubOptions(opts map[string]interface{}) BundleSpecOption {
-	return func(bs *BundleSpec) {
-		if bs.Csghub == nil {
-			bs.Csghub = NewCsghubSpec(bs.DestDir, nil)
-		}
-		bs.Csghub.ChartOptions = utils.MergeMap(bs.Csghub.ChartOptions, opts)
-	}
-}
-
-func WithLonghornOptions(opts map[string]interface{}) BundleSpecOption {
-	return func(bs *BundleSpec) {
-		if bs.Longhorn == nil {
-			bs.Longhorn = NewLonghornSpec(bs.DestDir, nil)
-		}
-		bs.Longhorn.ChartOptions = utils.MergeMap(bs.Longhorn.ChartOptions, opts)
-	}
-}
-
-func WithNvdpOptions(opts map[string]interface{}) BundleSpecOption {
-	return func(bs *BundleSpec) {
-		if bs.Nvdp == nil {
-			bs.Nvdp = NewNvdpSpec(bs.DestDir, nil)
-		}
-		bs.Nvdp.ChartOptions = utils.MergeMap(bs.Nvdp.ChartOptions, opts)
 	}
 }
