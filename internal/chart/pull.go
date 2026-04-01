@@ -73,7 +73,6 @@ func runPull(logger *logger.Logger, settings *cli.EnvSettings, chartRef, chartVe
 
 	pullClient := action.NewPullWithOpts(
 		action.WithConfig(actionConfig))
-	// client.RepoURL = ""
 	pullClient.DestDir = destDir
 	pullClient.Settings = settings
 	pullClient.Version = chartVersion

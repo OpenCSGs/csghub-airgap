@@ -1,9 +1,12 @@
 package spec
 
+import "runtime"
+
 type BundleSpec struct {
 	K3s     *K3sSpec    `yaml:"k3s"`
 	SkipK3s bool        `yaml:"skip_k3s"`
 	Charts  []ChartSpec `yaml:"charts"`
+	Arch    string      `yaml:"arch"`
 }
 
 func LoadBundleSpec() (*BundleSpec, error) {
@@ -16,5 +19,6 @@ func LoadBundleSpec() (*BundleSpec, error) {
 		K3s:     NewK3sSpec(),
 		SkipK3s: false,
 		Charts:  charts,
+		Arch:    runtime.GOARCH,
 	}, nil
 }

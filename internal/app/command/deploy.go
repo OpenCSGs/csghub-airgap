@@ -6,6 +6,7 @@ import (
 	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/infra/user"
 	"csghub-airgap/internal/log"
+	"runtime"
 
 	"github.com/urfave/cli/v2"
 )
@@ -90,6 +91,10 @@ func Deploy() *cli.Command {
 			bs, err := metadata.Load()
 			if err != nil {
 				return err
+			}
+
+			if bs.Arch != runtime.GOARCH {
+				log.Fatalf("Architecture mismatch: bundle requires %s, but current system is %s", bs.Arch, runtime.GOARCH)
 			}
 
 			// apply CLI overrides

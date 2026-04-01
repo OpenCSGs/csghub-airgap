@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"csghub-airgap/internal/config"
 	"io"
 	"os"
 	"sync"
@@ -37,7 +38,14 @@ func PullImage(image string) (v1.Image, error) {
 		return nil, err
 	}
 
-	img, err := remote.Image(ref)
+	log.Debugf("Pulling image %s (arch=%s)", ref, config.DefaultArchitecture)
+	img, err := remote.Image(
+		ref,
+		remote.WithPlatform(v1.Platform{
+			OS:           "linux",
+			Architecture: config.DefaultArchitecture},
+		),
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -9,6 +9,7 @@ import (
 	"csghub-airgap/internal/infra/pkg"
 	"csghub-airgap/internal/k3s"
 	"csghub-airgap/internal/log"
+	"runtime"
 	"time"
 )
 
@@ -19,8 +20,13 @@ func (s *Spec) Create() error {
 		return err
 	}
 
-	if err := pkg.Download(config.DefaultBaseDir); err != nil {
-		return err
+	if s.Arch == runtime.GOARCH {
+		if err := pkg.Download(config.DefaultBaseDir); err != nil {
+			return err
+		}
+	} else {
+		log.Warnf("Skipping package download: cross-architecture download is not supported (target=%s, host=%s)", s.Arch, runtime.GOARCH)
+		log.Warnf("Please download the required packages for the target architecture manually: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html")
 	}
 
 	if !s.SkipK3s {

@@ -112,6 +112,8 @@ func ApplyOverrides(b *spec.BundleSpec, c *cli.Context) error {
 		}
 	}
 
+	b.Arch = c.String("arch")
+
 	return nil
 }
 

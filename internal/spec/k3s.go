@@ -65,10 +65,14 @@ func (ks *K3sSpec) BinaryName() string {
 
 func (ks *K3sSpec) BinaryURL() string {
 	binaryURL, err := url.JoinPath(ks.BaseURL(), ks.BinaryName())
+	if config.DefaultArchitecture == "arm64" {
+		binaryURL = binaryURL + "-arm64"
+	}
 	if err != nil {
 		log.Fatalf("failed to generate k3s binary URL %s", err)
 	}
 
+	log.Debugf("Binary URL: %s", binaryURL)
 	return binaryURL
 }
 
@@ -77,7 +81,7 @@ func (ks *K3sSpec) BinaryPath() string {
 }
 
 func (ks *K3sSpec) ImageName() string {
-	return fmt.Sprintf("k3s-airgap-images-%s.tar.zst", runtime.GOARCH)
+	return fmt.Sprintf("k3s-airgap-images-%s.tar.zst", config.DefaultArchitecture)
 }
 
 func (ks *K3sSpec) ImageURL() string {
@@ -98,7 +102,7 @@ func (ks *K3sSpec) ScriptPath() string {
 }
 
 func (ks *K3sSpec) HelmBinaryName() string {
-	return fmt.Sprintf("helm-%s-%s-%s.tar.gz", ks.HelmVersion, runtime.GOOS, runtime.GOARCH)
+	return fmt.Sprintf("helm-%s-%s-%s.tar.gz", ks.HelmVersion, runtime.GOOS, config.DefaultArchitecture)
 }
 
 func (ks *K3sSpec) HelmBinaryURL() string {

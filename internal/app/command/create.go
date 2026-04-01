@@ -21,6 +21,12 @@ func Create() *cli.Command {
 				Usage:    "Output directory for the bundle",
 				Value:    config.DefaultBaseDir,
 			},
+			&cli.GenericFlag{
+				Name:     "arch",
+				Aliases:  []string{"a"},
+				Category: ">\u200BGlobal Settings",
+				Usage:    "Target architecture for binaries and container images (e.g. amd64, arm64)",
+				Value:    func() *Architecture { p := Architecture("amd64"); return &p }()},
 			&cli.BoolFlag{
 				Name:     "debug",
 				Aliases:  []string{"d"},
@@ -86,6 +92,7 @@ func Create() *cli.Command {
 
 			// Load manifest from YAMLs
 			config.InitBaseDir(c)
+			config.InitArchitecture(c)
 
 			// load spec
 			bs, err := spec.LoadBundleSpec()
