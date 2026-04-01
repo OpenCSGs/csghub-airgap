@@ -28,6 +28,7 @@ func NewFromSpec(bs *spec.BundleSpec) *Spec {
 			})
 			return sorted
 		}(bs.Charts),
-		Arch: bs.Arch,
+		Arch:    bs.Arch,
+		Runtime: bs.Runtime,
 	}
 }

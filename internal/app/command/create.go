@@ -54,6 +54,12 @@ func Create() *cli.Command {
 				Category: "> \u200DCharts Settings",
 				Usage:    "CSGHub chart version",
 			},
+			&cli.BoolFlag{
+				Name:     "csghub-runtime",
+				Category: "> \u200DCharts Settings",
+				Usage:    "Pull CSGHub runtime image",
+				Value:    false,
+			},
 			&cli.StringFlag{
 				Name:     "longhorn-version",
 				Aliases:  []string{"lv"},

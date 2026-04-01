@@ -113,6 +113,7 @@ func ApplyOverrides(b *spec.BundleSpec, c *cli.Context) error {
 	}
 
 	b.Arch = c.String("arch")
+	b.Runtime = c.Bool("csghub-runtime")
 
 	return nil
 }

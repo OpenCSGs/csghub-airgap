@@ -11,6 +11,7 @@ import (
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
 	"csghub-airgap/internal/utils"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -44,6 +45,17 @@ func (s *Spec) Deploy() error {
 		}
 		if err := image.Import(imageSpec); err != nil {
 			return err
+		}
+
+		if s.Runtime {
+			imageSpec := &spec.ImageSpec{
+				Images:       nil,
+				ChartName:    fmt.Sprintf("%s-%s", c.ChartName, "runtime"),
+				ChartVersion: c.ChartVersion,
+			}
+			if err := image.Import(imageSpec); err != nil {
+				return err
+			}
 		}
 
 		if chart.List(&c) {

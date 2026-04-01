@@ -55,7 +55,7 @@ func (s *Spec) Create() error {
 		default:
 		}
 
-		if err := chart.Image(&c, opt); err != nil {
+		if err := chart.Image(&c, s.Runtime, opt); err != nil {
 			return err
 		}
 	}

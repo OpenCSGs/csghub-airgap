@@ -1,11 +1,13 @@
 package chart
 
 import (
+	"context"
 	"csghub-airgap/internal/image"
 	iu "csghub-airgap/internal/image/utils"
 	"csghub-airgap/internal/log"
 	is "csghub-airgap/internal/spec"
 	"fmt"
+	"path/filepath"
 	"strings"
 )
 
@@ -55,7 +57,7 @@ var (
 	}
 )
 
-func Image(spec *is.ChartSpec, opts iu.ExtractOption) error {
+func Image(spec *is.ChartSpec, runtime bool, opts iu.ExtractOption) error {
 	manifest, err := Template(spec)
 	if err != nil {
 		return err
@@ -76,15 +78,36 @@ func Image(spec *is.ChartSpec, opts iu.ExtractOption) error {
 	}
 
 	images := iu.ExtractAllImages(manifest, yamlResource, opts)
+	var runtimeImages []string
 
-	switch spec.RepoName {
-	case "csghub":
+	// only csghub supports runtime images
+	if spec.RepoName == "csghub" {
+		// static images
 		for _, img := range imageList {
-			images = append(images, fmt.Sprintf("%s/%s", "opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq", img))
+			images = append(images, imageRegComplete(img))
 		}
-	}
 
-	log.Debugf("Images pulled: %v", images)
+		// dynamic runtime images
+		if runtime {
+			ctx := context.Background()
+			runtimeImages, err = image.Runtime(ctx)
+			if err != nil {
+				return err
+			}
+
+			if len(runtimeImages) == 0 {
+				log.Warn("runtime enabled but no runtime images found")
+			} else {
+				for i, img := range runtimeImages {
+					runtimeImages[i] = imageRegComplete(img)
+				}
+			}
+		}
+
+		log.Debugf("Images will pulling: %v, runtime: %v", images, runtimeImages)
+	} else {
+		log.Debugf("Images will pulling: %v", images)
+	}
 
 	imageSpec := &is.ImageSpec{
 		Images:       images,
@@ -96,5 +119,34 @@ func Image(spec *is.ChartSpec, opts iu.ExtractOption) error {
 		return err
 	}
 
+	if runtime && len(runtimeImages) > 0 {
+		imageSpec := &is.ImageSpec{
+			Images:       runtimeImages,
+			ChartName:    fmt.Sprintf("%s-%s", spec.ChartName, "runtime"),
+			ChartVersion: spec.ChartVersion,
+		}
+
+		if err = image.Export(imageSpec); err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+func imageRegComplete(img string) string {
+	regPrefix := "opencsg-registry.cn-beijing.cr.aliyuncs.com"
+
+	parts := strings.Split(img, "/")
+
+	// already has registry (first part contains '.' or ':')
+	if len(parts) > 1 && (strings.Contains(parts[0], ".") || strings.Contains(parts[0], ":")) {
+		return img
+	}
+
+	if !strings.HasPrefix(img, "opencsghq/") {
+		return filepath.Join(regPrefix, "opencsghq", img)
+	}
+
+	return filepath.Join(regPrefix, img)
 }
