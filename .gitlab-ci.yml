@@ -8,6 +8,7 @@ variables:
   OUTPUT_DIR: "build"
   GIT_STRATEGY: clone
   GIT_DEPTH: 1
+  GOPROXY: https://goproxy.cn,direct
 
 # Build for all platforms (Linux amd64/arm64 + Darwin amd64/arm64)
 build:
