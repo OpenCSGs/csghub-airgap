@@ -1,0 +1,73 @@
+stages:
+  - build
+  - upload
+  - release
+
+variables:
+  PROJECT_NAME: "csghub-airgap"
+  OUTPUT_DIR: "build"
+  GIT_STRATEGY: clone
+  GIT_DEPTH: 1
+
+# Build for all platforms (Linux amd64/arm64 + Darwin amd64/arm64)
+build:
+  stage: build
+  image: opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq/golang:1.24.11
+  before_script:
+    - apt-get update && apt-get install -y git make bash
+  script:
+    - make build-all
+  artifacts:
+    paths:
+      - ${OUTPUT_DIR}/
+    expire_in: 1 week
+  only:
+    - tags
+
+# Upload binaries to GitLab package registry (generic packages)
+upload:
+  stage: upload
+  image: opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsg_public/curlimages/curl:latest
+  dependencies:
+    - build
+  script:
+    - |
+      for file in ${OUTPUT_DIR}/*; do
+        if [ -f "$file" ]; then
+          filename=$(basename "$file")
+          curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+            --upload-file "$file" \
+            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PROJECT_NAME}/${CI_COMMIT_TAG}/${filename}"
+        fi
+      done
+  only:
+    - tags
+
+# Create GitLab Release with binaries attached
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  dependencies:
+    - build
+  script:
+    - echo "Creating GitLab Release ${CI_COMMIT_TAG}"
+  release:
+    name: "${PROJECT_NAME} ${CI_COMMIT_TAG}"
+    tag_name: "${CI_COMMIT_TAG}"
+    description: "${PROJECT_NAME} release ${CI_COMMIT_TAG}"
+    assets:
+      links:
+        - name: ${PROJECT_NAME}-linux-amd64
+          url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PROJECT_NAME}/${CI_COMMIT_TAG}/${PROJECT_NAME}-linux-amd64"
+          filepath: /${PROJECT_NAME}-linux-amd64
+        - name: ${PROJECT_NAME}-linux-arm64
+          url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PROJECT_NAME}/${CI_COMMIT_TAG}/${PROJECT_NAME}-linux-arm64"
+          filepath: /${PROJECT_NAME}-linux-arm64
+        - name: ${PROJECT_NAME}-darwin-amd64
+          url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PROJECT_NAME}/${CI_COMMIT_TAG}/${PROJECT_NAME}-darwin-amd64"
+          filepath: /${PROJECT_NAME}-darwin-amd64
+        - name: ${PROJECT_NAME}-darwin-arm64
+          url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PROJECT_NAME}/${CI_COMMIT_TAG}/${PROJECT_NAME}-darwin-arm64"
+          filepath: /${PROJECT_NAME}-darwin-arm64
+  only:
+    - tags
