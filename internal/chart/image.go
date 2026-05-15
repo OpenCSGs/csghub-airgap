@@ -140,11 +140,16 @@ func Image(spec *is.ChartSpec, runtime bool, opts iu.ExtractOption) error {
 
 func imageRegComplete(img string) string {
 	regPrefix := "opencsg-registry.cn-beijing.cr.aliyuncs.com"
+	fullPrefix := regPrefix + "/opencsghq/"
 
 	// Remove double registry prefix: regPrefix/opencsghq/regPrefix/... -> regPrefix/opencsghq/...
-	doublePrefix := regPrefix + "/opencsghq/" + regPrefix + "/"
-	if strings.HasPrefix(img, doublePrefix) {
-		img = regPrefix + "/opencsghq/" + strings.TrimPrefix(img, doublePrefix)
+	if strings.HasPrefix(img, fullPrefix+regPrefix+"/") {
+		img = fullPrefix + strings.TrimPrefix(img, fullPrefix+regPrefix+"/")
+	}
+
+	// Remove double namespace prefix: regPrefix/opencsghq/opencsghq/... -> regPrefix/opencsghq/...
+	if strings.HasPrefix(img, fullPrefix+"opencsghq/") {
+		img = fullPrefix + strings.TrimPrefix(img, fullPrefix+"opencsghq/")
 	}
 
 	parts := strings.Split(img, "/")
