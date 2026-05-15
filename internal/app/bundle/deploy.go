@@ -38,6 +38,10 @@ func (s *Spec) Deploy() error {
 	}
 
 	for _, c := range s.Charts {
+		if !c.Enabled {
+			log.Debugf("Skipping disabled chart %s", c.ChartName)
+			continue
+		}
 		imageSpec := &spec.ImageSpec{
 			Images:       nil,
 			ChartName:    c.ChartName,

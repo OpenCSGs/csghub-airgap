@@ -77,7 +77,11 @@ func Image(spec *is.ChartSpec, runtime bool, opts iu.ExtractOption) error {
 		}
 	}
 
-	images := iu.ExtractAllImages(manifest, yamlResource, opts)
+	rawImages := iu.ExtractAllImages(manifest, yamlResource, opts)
+	var images []string
+	for _, img := range rawImages {
+		images = append(images, imageRegComplete(img))
+	}
 	var runtimeImages []string
 
 	// only csghub supports runtime images
@@ -136,6 +140,12 @@ func Image(spec *is.ChartSpec, runtime bool, opts iu.ExtractOption) error {
 
 func imageRegComplete(img string) string {
 	regPrefix := "opencsg-registry.cn-beijing.cr.aliyuncs.com"
+
+	// Remove double registry prefix: regPrefix/opencsghq/regPrefix/... -> regPrefix/opencsghq/...
+	doublePrefix := regPrefix + "/opencsghq/" + regPrefix + "/"
+	if strings.HasPrefix(img, doublePrefix) {
+		img = regPrefix + "/opencsghq/" + strings.TrimPrefix(img, doublePrefix)
+	}
 
 	parts := strings.Split(img, "/")
 

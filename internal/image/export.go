@@ -27,19 +27,42 @@ func Export(spec *spec.ImageSpec) error {
 
 	log.Infof("Start exporting %d images to %s", len(spec.Images), imageFileName)
 
-	// ---------- Pull ----------
 	pullStart := time.Now()
+
+	// Pre-populate local containerd image list
+	listLocalImages()
+
+	localCount := 0
+	remoteCount := 0
 
 	imgMap := make(map[string]v1.Image)
 	for _, imgName := range spec.Images {
-		img, err := utils.PullImage(imgName)
+		var img v1.Image
+		var err error
+
+		if localImageExists(imgName) {
+			log.Debugf("Image found locally, exporting from containerd: %s", imgName)
+			img, err = exportLocalImage(imgName)
+			if err != nil {
+				log.Warnf("Failed to export local image %s, falling back to remote pull: %v", imgName, err)
+			} else {
+				localCount++
+				log.Infof("Image exported from local store: %s", imgName)
+				imgMap[imgName] = img
+				continue
+			}
+		}
+
+		img, err = utils.PullImage(imgName)
 		if err != nil {
 			return err
 		}
+		remoteCount++
 		imgMap[imgName] = img
 	}
 
-	log.Infof("Exporting %d images to %s, it will take a few minutes...", len(spec.Images), imageFileName)
+	log.Infof("Exporting %d images to %s (local=%d, remote=%d), it will take a few minutes...",
+		len(spec.Images), imageFileName, localCount, remoteCount)
 
 	if err := crane.MultiSave(imgMap, imageFilePath); err != nil {
 		return fmt.Errorf("error saving images %s: %v", spec.Images, err)

@@ -36,6 +36,10 @@ func (s *Spec) Create() error {
 	}
 
 	for _, c := range s.Charts {
+		if !c.Enabled {
+			log.Debugf("Skipping disabled chart %s", c.ChartName)
+			continue
+		}
 		if c.ChartVersion == "" {
 			c.ChartVersion = chart.LatestVersion(&c)
 		}
