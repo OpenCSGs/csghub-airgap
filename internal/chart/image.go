@@ -1,7 +1,6 @@
 package chart
 
 import (
-	"context"
 	"csghub-airgap/internal/image"
 	iu "csghub-airgap/internal/image/utils"
 	"csghub-airgap/internal/log"
@@ -57,7 +56,7 @@ var (
 	}
 )
 
-func Image(spec *is.ChartSpec, runtime bool, opts iu.ExtractOption) error {
+func Image(spec *is.ChartSpec, runtimeImages []string, opts iu.ExtractOption) error {
 	manifest, err := Template(spec)
 	if err != nil {
 		return err
@@ -82,7 +81,6 @@ func Image(spec *is.ChartSpec, runtime bool, opts iu.ExtractOption) error {
 	for _, img := range rawImages {
 		images = append(images, imageRegComplete(img))
 	}
-	var runtimeImages []string
 
 	// only csghub supports runtime images
 	if spec.RepoName == "csghub" {
@@ -91,26 +89,13 @@ func Image(spec *is.ChartSpec, runtime bool, opts iu.ExtractOption) error {
 			images = append(images, imageRegComplete(img))
 		}
 
-		// dynamic runtime images
-		if runtime {
-			ctx := context.Background()
-			runtimeImages, err = image.Runtime(ctx)
-			if err != nil {
-				return err
+		// user-selected runtime images
+		if len(runtimeImages) > 0 {
+			for i, img := range runtimeImages {
+				runtimeImages[i] = imageRegComplete(img)
 			}
-
-			if len(runtimeImages) == 0 {
-				log.Warn("runtime enabled but no runtime images found")
-			} else {
-				for i, img := range runtimeImages {
-					runtimeImages[i] = imageRegComplete(img)
-				}
-			}
+			log.Debugf("Using %d user-selected runtime images", len(runtimeImages))
 		}
-
-		log.Debugf("Images will pulling: %v, runtime: %v", images, runtimeImages)
-	} else {
-		log.Debugf("Images will pulling: %v", images)
 	}
 
 	imageSpec := &is.ImageSpec{
@@ -123,7 +108,7 @@ func Image(spec *is.ChartSpec, runtime bool, opts iu.ExtractOption) error {
 		return err
 	}
 
-	if runtime && len(runtimeImages) > 0 {
+	if len(runtimeImages) > 0 {
 		imageSpec := &is.ImageSpec{
 			Images:       runtimeImages,
 			ChartName:    fmt.Sprintf("%s-%s", spec.ChartName, "runtime"),
