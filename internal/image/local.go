@@ -73,26 +73,32 @@ func localImageExists(image string) bool {
 }
 
 // exportLocalImage exports an image from the local containerd store and returns it as a v1.Image.
-func exportLocalImage(image string) (v1.Image, error) {
+// The returned cleanup function must be called after the image has been fully written (e.g. after
+// crane.MultiSave) to remove the temporary tar file. crane.Load returns a lazy v1.Image that
+// reads layer blobs from the tar on demand, so the temp file must remain until writing is done.
+func exportLocalImage(image string) (v1.Image, func(), error) {
 	tmpFile, err := os.CreateTemp("", "ctr-export-*.tar")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create temp file: %w", err)
+		return nil, nil, fmt.Errorf("failed to create temp file: %w", err)
 	}
 	tmpPath := tmpFile.Name()
 	tmpFile.Close()
-	defer os.Remove(tmpPath)
+
+	cleanup := func() { os.Remove(tmpPath) }
 
 	arch := config.DefaultArchitecture
 	cmd := ctrCommand("images", "export", "--platform", "linux/"+arch, tmpPath, image)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("ctr images export failed: %w, output: %s", err, string(output))
+		cleanup()
+		return nil, nil, fmt.Errorf("ctr images export failed: %w, output: %s", err, string(output))
 	}
 
 	img, err := crane.Load(tmpPath)
 	if err != nil {
-		return nil, fmt.Errorf("crane load failed for %s: %w", tmpPath, err)
+		cleanup()
+		return nil, nil, fmt.Errorf("crane load failed for %s: %w", tmpPath, err)
 	}
 
-	return img, nil
+	return img, cleanup, nil
 }

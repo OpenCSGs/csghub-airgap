@@ -36,19 +36,22 @@ func Export(spec *spec.ImageSpec) error {
 	remoteCount := 0
 
 	imgMap := make(map[string]v1.Image)
+	var cleanups []func()
 	for _, imgName := range spec.Images {
 		var img v1.Image
 		var err error
 
 		if localImageExists(imgName) {
 			log.Debugf("Image found locally, exporting from containerd: %s", imgName)
-			img, err = exportLocalImage(imgName)
+			var cleanup func()
+			img, cleanup, err = exportLocalImage(imgName)
 			if err != nil {
 				log.Warnf("Failed to export local image %s, falling back to remote pull: %v", imgName, err)
 			} else {
 				localCount++
 				log.Infof("Image exported from local store: %s", imgName)
 				imgMap[imgName] = img
+				cleanups = append(cleanups, cleanup)
 				continue
 			}
 		}
@@ -66,6 +69,13 @@ func Export(spec *spec.ImageSpec) error {
 
 	if err := crane.MultiSave(imgMap, imageFilePath); err != nil {
 		return fmt.Errorf("error saving images %s: %v", spec.Images, err)
+	}
+
+	// Clean up temp tar files after MultiSave has fully written the output.
+	// This must happen after MultiSave because crane.Load returns lazy images
+	// that read layer blobs from the temp tar on demand.
+	for _, cleanup := range cleanups {
+		cleanup()
 	}
 
 	log.Infof("Exported %d images to %s (elapsed %.3fs)", len(spec.Images), spec.ImageFileName(), time.Since(pullStart).Seconds())
