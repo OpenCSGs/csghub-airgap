@@ -29,6 +29,7 @@ func main() {
 			command.Create(),
 			command.Deploy(),
 			command.Cleanup(),
+			command.ListImages(),
 		},
 	}
 
