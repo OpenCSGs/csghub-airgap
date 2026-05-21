@@ -9,6 +9,7 @@ A CLI tool for creating and deploying offline bundles for CSGHub in air-gapped e
 - **Clean up** K3s and all services when needed
 - **Multi-architecture** support (amd64, arm64)
 - **Configurable** components (Longhorn, NVDP, etc.)
+- **List runtime images** with category and compute type filters
 - **No daemon** - Pure CLI tool that runs on demand
 
 ## Prerequisites
@@ -236,6 +237,53 @@ sudo csghub-airgap cleanup
 
 # Force cleanup without confirmation
 sudo csghub-airgap cleanup --yes
+```
+
+#### List Runtime Images
+
+List available runtime images from csghub-server configs before creating a bundle:
+
+```shell
+csghub-airgap list-images [options]
+```
+
+##### Options
+
+| Flag           | Alias | Description                                                  | Default   |
+| :------------- | :---- | :----------------------------------------------------------- | :-------- |
+| `--source`     |       | Where to fetch configs: `github`, `local`                    | `github`  |
+| `--version`    | `-v`  | Git branch or tag for csghub-server (e.g., `main`, `v1.2.0`) | `main`    |
+| `--local-path` |       | Local directory containing csghub-server configs (used with `--source local`) | `.`       |
+| `--category`   | `-c`  | Filter by category (can specify multiple): `evaluation`, `finetune`, `inference`, `job`, `notebook`, `space` | (all)     |
+| `--compute`    |       | Filter by compute type (comma-separated): `cpu`, `gpu`, `dcu` | (all)     |
+| `--format`     | `-f`  | Output format: `table`, `json`                               | `table`   |
+
+##### Examples
+
+```shell
+# List all runtime images (fetches from GitHub)
+csghub-airgap list-images
+
+# List only inference images
+csghub-airgap list-images --category inference
+
+# List images from a specific csghub-server version
+csghub-airgap list-images --version v1.2.0
+
+# List GPU images across all categories
+csghub-airgap list-images --compute gpu
+
+# List CPU images for finetune and inference
+csghub-airgap list-images --category finetune --category inference --compute cpu
+
+# List images from a local csghub-server directory (useful for air-gapped environments)
+csghub-airgap list-images \
+  --source local \
+  --local-path /path/to/csghub-server \
+  --category inference
+
+# Output as JSON for scripting
+csghub-airgap list-images --category notebook --format json
 ```
 
 ## Complete Workflow Examples
