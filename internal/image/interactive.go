@@ -3,20 +3,149 @@ package image
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
-	"sort"
 	"strings"
 
-	"golang.org/x/term"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
-// SelectableImage wraps RuntimeImageInfo with selection state.
-type SelectableImage struct {
-	RuntimeImageInfo
-	Selected bool
+// runtimeItem is a list item representing a selectable runtime image.
+type runtimeItem struct {
+	ImageInfo RuntimeImageInfo
+	Selected  bool
 }
 
-// SelectRuntimeImages shows an interactive TUI for the user to pick runtime images.
+func (r runtimeItem) FilterValue() string {
+	return fmt.Sprintf("%s %s %s %s %s",
+		r.ImageInfo.Category, r.ImageInfo.EngineName,
+		r.ImageInfo.Image, r.ImageInfo.ComputeType, r.ImageInfo.EngineVer)
+}
+
+// categoryHeader is a list item that displays a category header (non-selectable).
+type categoryHeader string
+
+func (c categoryHeader) FilterValue() string { return "" }
+
+type itemDelegate struct{}
+
+func (d itemDelegate) Height() int  { return 1 }
+func (d itemDelegate) Spacing() int { return 0 }
+
+func (d itemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
+	return nil
+}
+
+func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	if ch, ok := listItem.(categoryHeader); ok {
+		style := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6")).PaddingLeft(2)
+		fmt.Fprint(w, style.Render("── "+string(ch)+" ──"))
+		return
+	}
+
+	ri, ok := listItem.(runtimeItem)
+	if !ok {
+		return
+	}
+
+	ch := " "
+	if ri.Selected {
+		ch = "✓"
+	}
+
+	label := fmt.Sprintf("[%s] %s  %s  (%s)  [%s]",
+		ch, ri.ImageInfo.EngineName, ri.ImageInfo.Image,
+		ri.ImageInfo.ComputeType, ri.ImageInfo.EngineVer)
+
+	style := lipgloss.NewStyle().PaddingLeft(2)
+
+	if index == m.Index() {
+		style = style.Bold(true).Foreground(lipgloss.Color("229")).
+			BorderLeft(true).BorderLeftForeground(lipgloss.Color("229"))
+		label = "▸ " + label
+	} else {
+		style = style.Foreground(lipgloss.Color("245"))
+	}
+
+	width := m.Width()
+	if width > 0 && len(label) > width-4 {
+		label = label[:width-7] + "..."
+	}
+	fmt.Fprint(w, style.Render(label))
+}
+
+type imageSelectorModel struct {
+	list     list.Model
+	chosen   bool
+	quitting bool
+}
+
+func newImageSelectorModel(images []RuntimeImageInfo, width, height int) imageSelectorModel {
+	items := make([]list.Item, 0, len(images))
+	for _, img := range images {
+		items = append(items, runtimeItem{ImageInfo: img, Selected: false})
+	}
+
+	d := itemDelegate{}
+	l := list.New(items, d, width, height)
+	l.Title = "Select runtime images (space to toggle, enter to confirm)"
+	l.SetShowStatusBar(false)
+	l.SetShowHelp(true)
+	l.SetFilteringEnabled(false) // disable filtering so space reaches delegate
+	l.KeyMap.Quit.SetEnabled(false)
+	l.KeyMap.ForceQuit.SetEnabled(false)
+
+	return imageSelectorModel{list: l}
+}
+
+func (m imageSelectorModel) Init() tea.Cmd { return nil }
+
+func (m imageSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		h := msg.Height - 4
+		m.list.SetSize(msg.Width, h)
+
+	case tea.KeyPressMsg:
+		switch msg.String() {
+		case "enter":
+			m.chosen = true
+			return m, tea.Quit
+		case "q", "esc":
+			m.quitting = true
+			return m, tea.Quit
+		case "space":
+			// Toggle selection for current item (skip category headers)
+			items := m.list.Items()
+			if idx := m.list.Index(); idx >= 0 && idx < len(items) {
+				if ri, ok := items[idx].(runtimeItem); ok {
+					ri.Selected = !ri.Selected
+					items[idx] = ri
+					m.list.SetItems(items)
+				}
+			}
+			return m, nil
+		}
+	}
+
+	var cmd tea.Cmd
+	m.list, cmd = m.list.Update(msg)
+	return m, cmd
+}
+
+func (m imageSelectorModel) View() tea.View {
+	if m.quitting {
+		v := tea.NewView("Cancelled.\n")
+		return v
+	}
+	v := tea.NewView(m.list.View())
+	v.AltScreen = true
+	return v
+}
+
+// SelectRuntimeImages shows an interactive TUI using bubbletea for the user to pick runtime images.
 // Returns the list of selected image names. Returns nil if the user cancels.
 func SelectRuntimeImages(ctx context.Context, source Source, version string) ([]string, error) {
 	images, err := ListRuntimeImages(ctx, source, version, nil, nil)
@@ -29,236 +158,27 @@ func SelectRuntimeImages(ctx context.Context, source Source, version string) ([]
 		return nil, nil
 	}
 
-	// Group by category, preserve order
-	categoryOrder := []string{"evaluation", "finetune", "inference", "job", "notebook", "space"}
-	grouped := make(map[string][]*SelectableImage)
-	for i := range images {
-		img := &SelectableImage{RuntimeImageInfo: images[i], Selected: false}
-		grouped[img.Category] = append(grouped[img.Category], img)
-	}
-
-	// Build flat display list
-	var categories []string
-	for _, c := range categoryOrder {
-		if _, ok := grouped[c]; ok {
-			categories = append(categories, c)
-		}
-	}
-	// Add any unknown categories
-	for c := range grouped {
-		found := false
-		for _, known := range categories {
-			if known == c {
-				found = true
-				break
-			}
-		}
-		if !found {
-			categories = append(categories, c)
-		}
-	}
-
-	// Flatten into a single list with category markers
-	type entry struct {
-		isHeader bool
-		category string
-		img      *SelectableImage
-	}
-
-	var entries []entry
-	for _, cat := range categories {
-		entries = append(entries, entry{isHeader: true, category: cat})
-		for _, img := range grouped[cat] {
-			entries = append(entries, entry{img: img})
-		}
-	}
-
-	// Enter raw terminal mode
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		return nil, fmt.Errorf("cannot set raw terminal: %w", err)
-	}
-	defer term.Restore(int(os.Stdin.Fd()), oldState)
-
-	// Hide cursor
-	fmt.Print("\033[?25l")
-	defer fmt.Print("\033[?25h")
-
-	scroll := 0
-	cursor := 0
-
-	render := func() {
-		height := 20 // reasonable terminal lines
-		if h, _, err := term.GetSize(int(os.Stdout.Fd())); err == nil && h > 5 {
-			height = h - 3
-		}
-
-		// Clear screen, cursor home
-		fmt.Print("\033[H\033[2J")
-
-		fmt.Println("\033[1mSelect runtime images (Space: toggle, Enter: confirm, q/Esc: cancel)\033[0m")
-		fmt.Println(strings.Repeat("─", 80))
-
-		startIdx := 0
-		// Find start index for scroll
-		idx := 0
-		for i, e := range entries {
-			if i < cursor {
-				if !e.isHeader {
-					idx++
-				}
-			}
-			if i == cursor {
-				startIdx = idx
-				break
-			}
-			if !e.isHeader {
-				idx++
-			}
-		}
-
-		// Adjust scroll so cursor is visible
-		if startIdx < scroll {
-			scroll = startIdx
-		}
-		if startIdx >= scroll+height {
-			scroll = startIdx - height + 1
-		}
-
-		lineCount := 0
-		for i, e := range entries {
-			if lineCount >= height {
-				break
-			}
-			if !e.isHeader {
-				if idx < scroll {
-					idx++
-					continue
-				}
-			}
-
-			if e.isHeader {
-				catTitle := strings.ToUpper(e.category)
-				if cursor == i {
-					fmt.Printf("\033[1;36m▶ %s\033[0m\n", catTitle)
-				} else {
-					fmt.Printf("  \033[1;36m%s\033[0m\n", catTitle)
-				}
-				lineCount++
-			} else {
-				ch := " "
-				if e.img.Selected {
-					ch = "✗"
-				}
-				label := fmt.Sprintf("[%s] %s  %s  (%s)  [%s]",
-					ch, e.img.EngineName, e.img.Image, e.img.ComputeType, e.img.EngineVer)
-				if cursor == i {
-					fmt.Printf("\033[1;33m▶ %s\033[0m\n", label)
-				} else {
-					fmt.Printf("  %s\n", label)
-				}
-				idx++
-				lineCount++
-			}
-		}
-
-		// Count selected
-		selected := 0
-		for _, e := range entries {
-			if e.img != nil && e.img.Selected {
-				selected++
-			}
-		}
-		fmt.Printf("\n\033[1mSelected: %d images\033[0m (Enter to confirm, q/Esc to cancel)\n", selected)
-	}
-
-	render()
-
-	buf := make([]byte, 3)
-	for {
-		n, err := os.Stdin.Read(buf)
-		if err != nil {
-			return nil, err
-		}
-
-		// Handle escape sequence
-		if n == 3 && buf[0] == 27 && buf[1] == 91 {
-			switch buf[2] {
-			case 65: // up
-				for cursor > 0 {
-					cursor--
-					if !entries[cursor].isHeader {
-						break
-					}
-				}
-			case 66: // down
-				for cursor < len(entries)-1 {
-					cursor++
-					if !entries[cursor].isHeader {
-						break
-					}
-				}
-			}
-			render()
-			continue
-		}
-
-		switch buf[0] {
-		case 13, 10: // enter
-			var result []string
-			for _, e := range entries {
-				if e.img != nil && e.img.Selected {
-					result = append(result, e.img.Image)
-				}
-			}
-			// Clear screen, show cursor
-			fmt.Print("\033[H\033[2J\033[?25h")
-			return result, nil
-
-		case ' ':
-			if entries[cursor].img != nil {
-				entries[cursor].img.Selected = !entries[cursor].img.Selected
-			}
-			render()
-
-		case 'q':
-			fmt.Print("\033[H\033[2J\033[?25h")
-			return nil, nil
-
-		case 27: // escape
-			fmt.Print("\033[H\033[2J\033[?25h")
-			return nil, nil
-		}
-	}
-}
-
-// PrintRuntimeImagesTable prints all runtime images grouped by category (non-interactive).
-func PrintRuntimeImagesTable(ctx context.Context, source Source, version string) error {
-	images, err := ListRuntimeImages(ctx, source, version, nil, nil)
-	if err != nil {
-		return err
-	}
-
 	// Group by category
 	categoryOrder := []string{"evaluation", "finetune", "inference", "job", "notebook", "space"}
-	grouped := make(map[string][]RuntimeImageInfo)
+	grouped := make(map[string][]runtimeItem)
 	for _, img := range images {
-		grouped[img.Category] = append(grouped[img.Category], img)
+		grouped[img.Category] = append(grouped[img.Category], runtimeItem{ImageInfo: img, Selected: false})
 	}
 
+	// Flatten with category separators
+	var allItems []list.Item
 	for _, cat := range categoryOrder {
-		imgs, ok := grouped[cat]
+		items, ok := grouped[cat]
 		if !ok {
 			continue
 		}
-		fmt.Printf("\n\033[1m[%s]\033[0m\n", strings.ToUpper(cat))
-		for _, img := range imgs {
-			fmt.Printf("  %-25s %s  (%s)  [%s]\n", img.EngineName, img.Image, img.ComputeType, img.EngineVer)
+		allItems = append(allItems, categoryHeader(strings.ToUpper(cat)))
+		for _, item := range items {
+			allItems = append(allItems, item)
 		}
 	}
-
 	// Unknown categories
-	for cat, imgs := range grouped {
+	for cat, items := range grouped {
 		found := false
 		for _, c := range categoryOrder {
 			if c == cat {
@@ -267,16 +187,32 @@ func PrintRuntimeImagesTable(ctx context.Context, source Source, version string)
 			}
 		}
 		if !found {
-			sort.Slice(imgs, func(i, j int) bool {
-				return imgs[i].Image < imgs[j].Image
-			})
-			fmt.Printf("\n\033[1m[%s]\033[0m\n", strings.ToUpper(cat))
-			for _, img := range imgs {
-				fmt.Printf("  %-25s %s  (%s)  [%s]\n", img.EngineName, img.Image, img.ComputeType, img.EngineVer)
+			allItems = append(allItems, categoryHeader(strings.ToUpper(cat)))
+			for _, item := range items {
+				allItems = append(allItems, item)
 			}
 		}
 	}
 
-	fmt.Printf("\nTotal: %d images\n", len(images))
-	return nil
+	m := newImageSelectorModel(images, 80, 24)
+	m.list.SetItems(allItems)
+
+	p := tea.NewProgram(m)
+	result, err := p.Run()
+	if err != nil {
+		return nil, err
+	}
+
+	mod := result.(imageSelectorModel)
+	if mod.quitting {
+		return nil, nil
+	}
+
+	var selected []string
+	for _, it := range mod.list.Items() {
+		if ri, ok := it.(runtimeItem); ok && ri.Selected {
+			selected = append(selected, ri.ImageInfo.Image)
+		}
+	}
+	return selected, nil
 }

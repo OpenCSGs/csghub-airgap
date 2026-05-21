@@ -48,11 +48,7 @@ var (
 		},
 	}
 	imageList = []string{
-		"space-base:python3.10-1.0.4",
-		"space-base:python3.10-cuda12.1.0-1.0.4",
-		"space-base:python3.10-cuda11.8.0-1.0.4",
 		"nginx:latest",
-		"argoproj/argoexec:v3.7.10",
 	}
 )
 
