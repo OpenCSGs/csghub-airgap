@@ -38,6 +38,16 @@ func (d itemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	return nil
 }
 
+// selectAll sets the Selected field on all runtimeItem items to the given value.
+func selectAll(items []list.Item, selected bool) {
+	for i, it := range items {
+		if ri, ok := it.(runtimeItem); ok {
+			ri.Selected = selected
+			items[i] = ri
+		}
+	}
+}
+
 func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	if ch, ok := listItem.(categoryHeader); ok {
 		style := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6")).PaddingLeft(2)
@@ -90,12 +100,16 @@ func newImageSelectorModel(images []RuntimeImageInfo, width, height int) imageSe
 
 	d := itemDelegate{}
 	l := list.New(items, d, width, height)
-	l.Title = "Select runtime images (space to toggle, enter to confirm)"
+	l.Title = "Select runtime images (space=toggle, a=select all, A=deselect all, enter=confirm)"
 	l.SetShowStatusBar(false)
 	l.SetShowHelp(true)
 	l.SetFilteringEnabled(false) // disable filtering so space reaches delegate
 	l.KeyMap.Quit.SetEnabled(false)
 	l.KeyMap.ForceQuit.SetEnabled(false)
+	l.KeyMap.NextPage.SetEnabled(false)
+	l.KeyMap.PrevPage.SetEnabled(false)
+	l.KeyMap.GoToStart.SetEnabled(false)
+	l.KeyMap.GoToEnd.SetEnabled(false)
 
 	return imageSelectorModel{list: l}
 }
@@ -126,6 +140,16 @@ func (m imageSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.list.SetItems(items)
 				}
 			}
+			return m, nil
+		case "a":
+			// Select all runtime items
+			selectAll(m.list.Items(), true)
+			m.list.SetItems(m.list.Items())
+			return m, nil
+		case "A":
+			// Deselect all runtime items
+			selectAll(m.list.Items(), false)
+			m.list.SetItems(m.list.Items())
 			return m, nil
 		}
 	}
