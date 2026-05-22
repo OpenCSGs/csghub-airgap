@@ -72,13 +72,13 @@ func localImageExists(image string) bool {
 	return false
 }
 
-// exportLocalImage exports an image from the local containerd store and returns it as a v1.Image.
-// The temporary tar file is fully consumed (layer blobs materialized) before the function returns,
-// so no external cleanup is needed.
-func exportLocalImage(image string) (v1.Image, error) {
+// exportLocalImage exports an image from the local containerd store and returns it as a v1.Image
+// along with the temporary tar file path. The temp tar must remain on disk until MultiSave
+// finishes reading the image, after which the caller should delete it.
+func exportLocalImage(image string) (v1.Image, string, error) {
 	tmpFile, err := os.CreateTemp("", "ctr-export-*.tar")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create temp file: %w", err)
+		return nil, "", fmt.Errorf("failed to create temp file: %w", err)
 	}
 	tmpPath := tmpFile.Name()
 	tmpFile.Close()
@@ -88,29 +88,29 @@ func exportLocalImage(image string) (v1.Image, error) {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		os.Remove(tmpPath)
-		return nil, fmt.Errorf("ctr images export failed: %w, output: %s", err, string(output))
+		return nil, "", fmt.Errorf("ctr images export failed: %w, output: %s", err, string(output))
 	}
 
 	img, err := crane.Load(tmpPath)
 	if err != nil {
 		os.Remove(tmpPath)
-		return nil, fmt.Errorf("crane load failed for %s: %w", tmpPath, err)
+		return nil, "", fmt.Errorf("crane load failed for %s: %w", tmpPath, err)
 	}
 
-	// Materialize all layer blobs into memory so the temp tar can be deleted immediately.
-	// This avoids leaving large temp files visible during the subsequent MultiSave.
+	// Materialize all layer blobs so that MultiSave can read them.
+	// The temp tar is left on disk and must be cleaned up after MultiSave
+	// completes (see Export which tracks temp paths for cleanup).
 	layers, err := img.Layers()
 	if err != nil {
 		os.Remove(tmpPath)
-		return nil, fmt.Errorf("failed to read layers for %s: %w", image, err)
+		return nil, "", fmt.Errorf("failed to read layers for %s: %w", image, err)
 	}
 	for _, layer := range layers {
 		if _, err := layer.Compressed(); err != nil {
 			os.Remove(tmpPath)
-			return nil, fmt.Errorf("failed to materialize layer for %s: %w", image, err)
+			return nil, "", fmt.Errorf("failed to materialize layer for %s: %w", image, err)
 		}
 	}
 
-	os.Remove(tmpPath)
-	return img, nil
+	return img, tmpPath, nil
 }

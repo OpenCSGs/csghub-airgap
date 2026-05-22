@@ -36,19 +36,23 @@ func Export(spec *spec.ImageSpec) error {
 	remoteCount := 0
 
 	imgMap := make(map[string]v1.Image)
+	var tempTars []string
 	for _, imgName := range spec.Images {
 		var img v1.Image
 		var err error
 
 		if localImageExists(imgName) {
 			log.Debugf("Image found locally, exporting from containerd: %s", imgName)
-			img, err = exportLocalImage(imgName)
+			img, tempTarPath, err := exportLocalImage(imgName)
 			if err != nil {
 				log.Warnf("Failed to export local image %s, falling back to remote pull: %v", imgName, err)
 			} else {
 				localCount++
 				log.Infof("Image exported from local store: %s", imgName)
 				imgMap[imgName] = img
+				if tempTarPath != "" {
+					tempTars = append(tempTars, tempTarPath)
+				}
 				continue
 			}
 		}
@@ -60,6 +64,15 @@ func Export(spec *spec.ImageSpec) error {
 		remoteCount++
 		imgMap[imgName] = img
 	}
+
+	// Clean up temp tar files after MultiSave reads them
+	defer func() {
+		for _, p := range tempTars {
+			if err := os.Remove(p); err == nil {
+				log.Debugf("Cleaned up temp tar: %s", p)
+			}
+		}
+	}()
 
 	log.Infof("Exporting %d images to %s (local=%d, remote=%d), it will take a few minutes...",
 		len(spec.Images), imageFileName, localCount, remoteCount)
