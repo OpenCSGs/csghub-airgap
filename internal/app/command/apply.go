@@ -12,6 +12,10 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+func normalizeVersion(v string) string {
+	return strings.TrimPrefix(v, "v")
+}
+
 func ApplyOverrides(b *spec.BundleSpec, c *cli.Context) error {
 	if !b.SkipK3s {
 		b.SkipK3s = c.Bool("skip-k3s")
@@ -64,7 +68,7 @@ func ApplyOverrides(b *spec.BundleSpec, c *cli.Context) error {
 		switch chart.Name {
 		case "csghub":
 			if v := c.String("csghub-version"); v != "" {
-				chart.ChartVersion = v
+				chart.ChartVersion = normalizeVersion(v)
 			} else if chart.ChartVersion != "" {
 				// version already populated from metadata(deploy)
 			} else {
@@ -79,7 +83,7 @@ func ApplyOverrides(b *spec.BundleSpec, c *cli.Context) error {
 
 		case "longhorn":
 			if v := c.String("longhorn-version"); v != "" {
-				chart.ChartVersion = v
+				chart.ChartVersion = normalizeVersion(v)
 			}
 			chart.Enabled = !c.Bool("skip-longhorn")
 			if data != "" {
@@ -88,7 +92,7 @@ func ApplyOverrides(b *spec.BundleSpec, c *cli.Context) error {
 
 		case "nvdp":
 			if v := c.String("nvdp-version"); v != "" {
-				chart.ChartVersion = v
+				chart.ChartVersion = normalizeVersion(v)
 			}
 			chart.Enabled = !c.Bool("skip-nvdp")
 		}

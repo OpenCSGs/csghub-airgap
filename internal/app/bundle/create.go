@@ -36,6 +36,10 @@ func (s *Spec) Create() error {
 	}
 
 	for _, c := range s.Charts {
+		if !c.Enabled {
+			log.Debugf("Skipping disabled chart %s", c.ChartName)
+			continue
+		}
 		if c.ChartVersion == "" {
 			c.ChartVersion = chart.LatestVersion(&c)
 		}
@@ -55,7 +59,11 @@ func (s *Spec) Create() error {
 		default:
 		}
 
-		if err := chart.Image(&c, s.Runtime, opt); err != nil {
+		var runtimeImages []string
+		if c.RepoName == "csghub" {
+			runtimeImages = s.SelectedRuntimeImages
+		}
+		if err := chart.Image(&c, runtimeImages, opt); err != nil {
 			return err
 		}
 	}

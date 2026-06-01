@@ -1,7 +1,6 @@
 package chart
 
 import (
-	"context"
 	"csghub-airgap/internal/image"
 	iu "csghub-airgap/internal/image/utils"
 	"csghub-airgap/internal/log"
@@ -49,15 +48,11 @@ var (
 		},
 	}
 	imageList = []string{
-		"space-base:python3.10-1.0.4",
-		"space-base:python3.10-cuda12.1.0-1.0.4",
-		"space-base:python3.10-cuda11.8.0-1.0.4",
 		"nginx:latest",
-		"argoproj/argoexec:v3.7.10",
 	}
 )
 
-func Image(spec *is.ChartSpec, runtime bool, opts iu.ExtractOption) error {
+func Image(spec *is.ChartSpec, runtimeImages []string, opts iu.ExtractOption) error {
 	manifest, err := Template(spec)
 	if err != nil {
 		return err
@@ -77,8 +72,11 @@ func Image(spec *is.ChartSpec, runtime bool, opts iu.ExtractOption) error {
 		}
 	}
 
-	images := iu.ExtractAllImages(manifest, yamlResource, opts)
-	var runtimeImages []string
+	rawImages := iu.ExtractAllImages(manifest, yamlResource, opts)
+	var images []string
+	for _, img := range rawImages {
+		images = append(images, imageRegComplete(img))
+	}
 
 	// only csghub supports runtime images
 	if spec.RepoName == "csghub" {
@@ -87,26 +85,13 @@ func Image(spec *is.ChartSpec, runtime bool, opts iu.ExtractOption) error {
 			images = append(images, imageRegComplete(img))
 		}
 
-		// dynamic runtime images
-		if runtime {
-			ctx := context.Background()
-			runtimeImages, err = image.Runtime(ctx)
-			if err != nil {
-				return err
+		// user-selected runtime images
+		if len(runtimeImages) > 0 {
+			for i, img := range runtimeImages {
+				runtimeImages[i] = imageRegComplete(img)
 			}
-
-			if len(runtimeImages) == 0 {
-				log.Warn("runtime enabled but no runtime images found")
-			} else {
-				for i, img := range runtimeImages {
-					runtimeImages[i] = imageRegComplete(img)
-				}
-			}
+			log.Debugf("Using %d user-selected runtime images", len(runtimeImages))
 		}
-
-		log.Debugf("Images will pulling: %v, runtime: %v", images, runtimeImages)
-	} else {
-		log.Debugf("Images will pulling: %v", images)
 	}
 
 	imageSpec := &is.ImageSpec{
@@ -119,7 +104,7 @@ func Image(spec *is.ChartSpec, runtime bool, opts iu.ExtractOption) error {
 		return err
 	}
 
-	if runtime && len(runtimeImages) > 0 {
+	if len(runtimeImages) > 0 {
 		imageSpec := &is.ImageSpec{
 			Images:       runtimeImages,
 			ChartName:    fmt.Sprintf("%s-%s", spec.ChartName, "runtime"),
@@ -136,6 +121,17 @@ func Image(spec *is.ChartSpec, runtime bool, opts iu.ExtractOption) error {
 
 func imageRegComplete(img string) string {
 	regPrefix := "opencsg-registry.cn-beijing.cr.aliyuncs.com"
+	fullPrefix := regPrefix + "/opencsghq/"
+
+	// Remove double registry prefix: regPrefix/opencsghq/regPrefix/... -> regPrefix/opencsghq/...
+	if strings.HasPrefix(img, fullPrefix+regPrefix+"/") {
+		img = fullPrefix + strings.TrimPrefix(img, fullPrefix+regPrefix+"/")
+	}
+
+	// Remove double namespace prefix: regPrefix/opencsghq/opencsghq/... -> regPrefix/opencsghq/...
+	if strings.HasPrefix(img, fullPrefix+"opencsghq/") {
+		img = fullPrefix + strings.TrimPrefix(img, fullPrefix+"opencsghq/")
+	}
 
 	parts := strings.Split(img, "/")
 

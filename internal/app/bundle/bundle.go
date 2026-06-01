@@ -17,8 +17,9 @@ func NewFromSpec(bs *spec.BundleSpec) *Spec {
 	})
 
 	return &Spec{
-		K3s:     bs.K3s,
-		SkipK3s: bs.SkipK3s,
+		K3s:                   bs.K3s,
+		SkipK3s:               bs.SkipK3s,
+		SelectedRuntimeImages: bs.SelectedRuntimeImages,
 		// Sort by weight in descending order, with higher weights listed first.
 		Charts: func(charts []spec.ChartSpec) []spec.ChartSpec {
 			sorted := make([]spec.ChartSpec, len(charts))
