@@ -39,10 +39,10 @@ values:
         pullPolicy: IfNotPresent
       controller:
         image:
-          registry: opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq
+          registry: quay.io
       executor:
         image:
-          registry: opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq
+          registry: quay.io
       server:
         image:
-          registry: opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq
+          registry: quay.io

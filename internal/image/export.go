@@ -59,7 +59,8 @@ func Export(spec *spec.ImageSpec) error {
 
 		img, err = utils.PullImage(imgName)
 		if err != nil {
-			return err
+			log.Warnf("Failed to pull image %s, skipping it: %v", imgName, err)
+			continue
 		}
 		remoteCount++
 		imgMap[imgName] = img
