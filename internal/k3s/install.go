@@ -14,7 +14,7 @@ import (
 )
 
 func Install(ks *spec.K3sSpec) error {
-	defaultDataDir, exists := ks.GetArg("--data-dir")
+	defaultDataDir, _ := ks.GetArg("--data-dir")
 	dataDir := utils.NVL(defaultDataDir, "/var/lib/rancher/k3s")
 
 	assets := []Asset{
@@ -115,8 +115,9 @@ func Install(ks *spec.K3sSpec) error {
 	}
 
 	// 7. local CoreDNS resolve patch
-
-	if exists && defaultDataDir != "" {
+	// Always resolve crictl config from dataDir (which falls back to the k3s
+	// default), so the symlink is created even when --data-dir is not set.
+	{
 		defaultCrictlConfig := filepath.Join(dataDir, "agent/etc/crictl.yaml")
 		targetCrictlConfig := "/etc/crictl.yaml"
 
