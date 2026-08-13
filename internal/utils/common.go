@@ -65,7 +65,11 @@ func IsZeroValue(v reflect.Value) bool {
 func GetNestedString(m map[string]interface{}, keys ...string) (string, bool) {
 	var current interface{} = m
 	for _, k := range keys {
-		next, ok := current.(map[string]interface{})[k]
+		nextMap, ok := current.(map[string]interface{})
+		if !ok {
+			return "", false
+		}
+		next, ok := nextMap[k]
 		if !ok {
 			return "", false
 		}
