@@ -15,6 +15,16 @@ import (
 func Export(spec *spec.ImageSpec) error {
 	imageFilePath := spec.ImageFilePath()
 	imageFileName := spec.ImageFileName()
+	incompleteFlag := imageFilePath + ".incomplete"
+
+	// A previous run may have skipped some images and written an incomplete
+	// bundle. Drop it so a re-run retries the missing images instead of
+	// silently reusing the partial tar.
+	if _, err := os.Stat(incompleteFlag); err == nil {
+		log.Warnf("Previous export of %s was incomplete, re-exporting", imageFileName)
+		_ = os.Remove(imageFilePath)
+		_ = os.Remove(incompleteFlag)
+	}
 
 	if _, err := os.Stat(imageFilePath); err == nil {
 		log.Infof("Images export files %s already exists", imageFileName)
@@ -78,13 +88,21 @@ func Export(spec *spec.ImageSpec) error {
 		imgMap[imgName] = img
 	}
 
-	// If any images were skipped, do not write a partial tar: a re-run will
-	// then retry the missing images instead of silently reusing a broken
-	// bundle. create continues with a warning so one missing image doesn't
-	// abort the whole run.
+	// If any images were skipped, write a partial tar with the successful
+	// ones so deploy can still proceed. Mark the tar with a .incomplete flag
+	// so a re-run of create will re-export and retry the missing images.
 	if len(skippedImages) > 0 {
-		log.Warnf("Skipped %d images, no images tar written: %v", len(skippedImages), skippedImages)
-		log.Warnf("Bundle may be incomplete; resolve these images and re-run create")
+		if len(imgMap) > 0 {
+			log.Warnf("Skipped %d images, writing partial bundle: %v", len(skippedImages), skippedImages)
+			if err := crane.MultiSave(imgMap, imageFilePath); err != nil {
+				return fmt.Errorf("error saving images %s: %v", spec.Images, err)
+			}
+			if err := os.WriteFile(incompleteFlag, []byte{}, 0644); err != nil {
+				log.Warnf("Failed to write incomplete flag: %v", err)
+			}
+		} else {
+			log.Warnf("No images were successfully pulled, skipping export for %s", imageFileName)
+		}
 		return nil
 	}
 
