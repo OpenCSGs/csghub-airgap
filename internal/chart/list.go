@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"helm.sh/helm/v3/pkg/action"
@@ -74,7 +75,8 @@ func ListChart(spec *spec.ChartSpec) ([]*semver.Version, error) {
 		return nil, err
 	}
 
-	resp, err := http.Get(indexURL)
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Get(indexURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch index.yaml: %v", err)
 	}
@@ -94,7 +96,10 @@ func ListChart(spec *spec.ChartSpec) ([]*semver.Version, error) {
 	for chartName, chartVersions := range indexFile.Entries {
 		if chartName == spec.ChartName {
 			for _, chartVersion := range chartVersions {
-				semverVersion, _ := semver.NewVersion(chartVersion.Metadata.Version)
+				semverVersion, err := semver.NewVersion(chartVersion.Metadata.Version)
+				if err != nil {
+					continue
+				}
 				versions = append(versions, semverVersion)
 			}
 		}
@@ -109,6 +114,11 @@ func LatestVersion(spec *spec.ChartSpec) string {
 	versions, err := ListChart(spec)
 	if err != nil {
 		log.Fatalf("failed to list chart versions: %s", err)
+		return ""
+	}
+
+	if len(versions) == 0 {
+		log.Fatalf("no versions found for chart %s", spec.ChartName)
 		return ""
 	}
 
