@@ -159,6 +159,9 @@ func Walk(data interface{}, path []string) []interface{} {
 			}
 			return result
 		}
+		if v, ok := node[key]; ok {
+			return Walk(v, path[1:])
+		}
 	case map[interface{}]interface{}:
 		key := path[0]
 		if key == "*" {
@@ -167,6 +170,9 @@ func Walk(data interface{}, path []string) []interface{} {
 				result = append(result, Walk(v, path[1:])...)
 			}
 			return result
+		}
+		if v, ok := node[key]; ok {
+			return Walk(v, path[1:])
 		}
 	case []interface{}:
 		var result []interface{}
