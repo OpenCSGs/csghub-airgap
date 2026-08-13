@@ -36,7 +36,18 @@ func Export(spec *spec.ImageSpec) error {
 	remoteCount := 0
 
 	imgMap := make(map[string]v1.Image)
+	var skippedImages []string
 	var tempTars []string
+
+	// Clean up temp tar files after MultiSave (or any early return) reads them.
+	defer func() {
+		for _, p := range tempTars {
+			if err := os.Remove(p); err == nil {
+				log.Debugf("Cleaned up temp tar: %s", p)
+			}
+		}
+	}()
+
 	for _, imgName := range spec.Images {
 		var img v1.Image
 		var err error
@@ -60,20 +71,22 @@ func Export(spec *spec.ImageSpec) error {
 		img, err = utils.PullImage(imgName)
 		if err != nil {
 			log.Warnf("Failed to pull image %s, skipping it: %v", imgName, err)
+			skippedImages = append(skippedImages, imgName)
 			continue
 		}
 		remoteCount++
 		imgMap[imgName] = img
 	}
 
-	// Clean up temp tar files after MultiSave reads them
-	defer func() {
-		for _, p := range tempTars {
-			if err := os.Remove(p); err == nil {
-				log.Debugf("Cleaned up temp tar: %s", p)
-			}
-		}
-	}()
+	// If any images were skipped, do not write a partial tar: a re-run will
+	// then retry the missing images instead of silently reusing a broken
+	// bundle. create continues with a warning so one missing image doesn't
+	// abort the whole run.
+	if len(skippedImages) > 0 {
+		log.Warnf("Skipped %d images, no images tar written: %v", len(skippedImages), skippedImages)
+		log.Warnf("Bundle may be incomplete; resolve these images and re-run create")
+		return nil
+	}
 
 	log.Infof("Exporting %d images to %s (local=%d, remote=%d), it will take a few minutes...",
 		len(spec.Images), imageFileName, localCount, remoteCount)
