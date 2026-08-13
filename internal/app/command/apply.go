@@ -3,6 +3,8 @@ package command
 import (
 	hc "csghub-airgap/internal/chart"
 	"csghub-airgap/internal/config"
+	"csghub-airgap/internal/infra/net"
+	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
 	"csghub-airgap/internal/utils"
 	"csghub-airgap/internal/utils/flag"
@@ -119,6 +121,21 @@ func ApplyOverrides(b *spec.BundleSpec, c *cli.Context) error {
 
 	b.Arch = config.DefaultArchitecture
 	b.Runtime = c.Bool("csghub-runtime")
+
+	// On deploy, replace a --flannel-iface recorded from the build machine
+	// (e.g. en0 on macOS) with the current host's default interface, unless
+	// the user explicitly overrode it via --k3s-arg. This lets bundles created
+	// cross-platform deploy correctly when the target host uses a different
+	// NIC name (eth0, ens33, ...).
+	if c.Command.Name == "deploy" && !c.IsSet("k3s-arg") {
+		if _, ok := b.K3s.InstallArgs["--flannel-iface"]; ok {
+			iface, err := net.GetDefaultInterface()
+			if err == nil && iface != "" {
+				b.K3s.InstallArgs["--flannel-iface"] = iface
+				log.Debugf("Overriding --flannel-iface with host interface %s", iface)
+			}
+		}
+	}
 
 	return nil
 }
