@@ -131,8 +131,19 @@ func downloadOnce(url, savePath string, timeout int) error {
 		return fmt.Errorf("GET request failed: %s", resp.Status)
 	}
 
+	// If a Range was requested but the server ignored it (returned 200 with the
+	// full body), appending would duplicate data. Fall back to a full re-download.
+	if startPos > 0 && resp.StatusCode != http.StatusPartialContent {
+		log.Warnf("Server did not honor Range request, restarting download of %s", filepath.Base(savePath))
+		startPos = 0
+	}
+
 	// Open file for writing
-	f, err := os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0755)
+	flags := os.O_CREATE | os.O_WRONLY
+	if startPos > 0 {
+		flags |= os.O_APPEND
+	}
+	f, err := os.OpenFile(savePath, flags, 0755)
 	if err != nil {
 		return err
 	}
