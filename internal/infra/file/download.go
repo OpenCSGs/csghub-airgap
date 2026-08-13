@@ -138,10 +138,14 @@ func downloadOnce(url, savePath string, timeout int) error {
 		startPos = 0
 	}
 
-	// Open file for writing
+	// Open file for writing. O_APPEND for resume; when restarting from the
+	// beginning (fresh download or server ignored Range) truncate so stale
+	// bytes from a previous partial file are not left behind.
 	flags := os.O_CREATE | os.O_WRONLY
 	if startPos > 0 {
 		flags |= os.O_APPEND
+	} else {
+		flags |= os.O_TRUNC
 	}
 	f, err := os.OpenFile(savePath, flags, 0755)
 	if err != nil {
