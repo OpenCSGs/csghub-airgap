@@ -21,10 +21,13 @@ func PatchInstall(ks *spec.K3sSpec, domain string) error {
 		return err
 	}
 
-	// Pass values as env vars with quoting rather than interpolating into the
-	// command string, so user-supplied domain/ip can't inject shell commands.
-	cmd := fmt.Sprintf("env DOMAIN=%q TARGET_IP=%q bash %s", domain, ip, patchScript)
-	if err = shell.Execute("/bin/bash", "-c", cmd); err != nil {
+	// Pass values as separate exec args rather than building a shell command
+	// string, so user-supplied domain/ip can't inject shell commands.
+	if err = shell.Execute("env",
+		fmt.Sprintf("DOMAIN=%s", domain),
+		fmt.Sprintf("TARGET_IP=%s", ip),
+		"bash", patchScript,
+	); err != nil {
 		return err
 	}
 
