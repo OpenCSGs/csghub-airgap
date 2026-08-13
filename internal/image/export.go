@@ -18,9 +18,16 @@ func Export(spec *spec.ImageSpec) error {
 	incompleteFlag := imageFilePath + ".incomplete"
 
 	// A previous run may have skipped some images and written an incomplete
-	// bundle. Drop it so a re-run retries the missing images instead of
-	// silently reusing the partial tar.
+	// bundle. Ask the user whether to delete it and re-export, so they can
+	// choose to keep the partial bundle instead.
 	if _, err := os.Stat(incompleteFlag); err == nil {
+		fmt.Printf("A previous export of %s was incomplete (some images were skipped).\n", imageFileName)
+		fmt.Print("Re-export and retry the missing images? (y/N): ")
+		var input string
+		if _, err := fmt.Scanln(&input); err != nil || (input != "y" && input != "Y") {
+			log.Warnf("Keeping the existing incomplete bundle %s", imageFileName)
+			return nil
+		}
 		log.Warnf("Previous export of %s was incomplete, re-exporting", imageFileName)
 		_ = os.Remove(imageFilePath)
 		_ = os.Remove(incompleteFlag)
