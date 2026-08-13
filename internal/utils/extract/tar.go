@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // UnTarGz extracts a tar or tar.gz archive to the destination directory.
@@ -58,6 +59,12 @@ func UnTar(trReader io.Reader, destDir string) error {
 		}
 
 		targetPath := filepath.Join(destDir, hdr.Name)
+
+		// Prevent path traversal: the resolved path must stay inside destDir.
+		rel, err := filepath.Rel(destDir, targetPath)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return fmt.Errorf("tar entry %q escapes destination directory %s", hdr.Name, destDir)
+		}
 
 		switch hdr.Typeflag {
 		case tar.TypeDir:
