@@ -2,6 +2,7 @@ package command
 
 import (
 	hc "csghub-airgap/internal/chart"
+	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/spec"
 	"csghub-airgap/internal/utils"
 	"csghub-airgap/internal/utils/flag"
@@ -116,7 +117,7 @@ func ApplyOverrides(b *spec.BundleSpec, c *cli.Context) error {
 		}
 	}
 
-	b.Arch = c.String("arch")
+	b.Arch = config.DefaultArchitecture
 	b.Runtime = c.Bool("csghub-runtime")
 
 	return nil

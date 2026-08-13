@@ -18,6 +18,9 @@ type K3sSpec struct {
 	HelmVersion string            `yaml:"helm_version" default:"v3.20.1"`
 	InstallEnvs map[string]string `yaml:"install_envs"`
 	InstallArgs map[string]string `yaml:"install_args"`
+	// TargetOS is the OS the bundle is built for (e.g. "linux"). Empty means
+	// the current host OS, used when deploying locally.
+	TargetOS string `yaml:"target_os,omitempty"`
 }
 
 func NewK3sSpec() *K3sSpec {
@@ -102,7 +105,11 @@ func (ks *K3sSpec) ScriptPath() string {
 }
 
 func (ks *K3sSpec) HelmBinaryName() string {
-	return fmt.Sprintf("helm-%s-%s-%s.tar.gz", ks.HelmVersion, runtime.GOOS, config.DefaultArchitecture)
+	targetOS := ks.TargetOS
+	if targetOS == "" {
+		targetOS = runtime.GOOS
+	}
+	return fmt.Sprintf("helm-%s-%s-%s.tar.gz", ks.HelmVersion, targetOS, config.DefaultArchitecture)
 }
 
 func (ks *K3sSpec) HelmBinaryURL() string {

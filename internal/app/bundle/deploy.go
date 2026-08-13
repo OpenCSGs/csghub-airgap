@@ -19,6 +19,10 @@ import (
 func (s *Spec) Deploy() error {
 	start := time.Now()
 
+	if err := os.CheckOS(); err != nil {
+		return err
+	}
+
 	if err := os.CheckArch(); err != nil {
 		return err
 	}

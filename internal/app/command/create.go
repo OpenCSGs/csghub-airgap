@@ -7,6 +7,7 @@ import (
 	"csghub-airgap/internal/image"
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
+	"runtime"
 
 	"github.com/urfave/cli/v2"
 )
@@ -28,7 +29,7 @@ func Create() *cli.Command {
 				Aliases:  []string{"a"},
 				Category: ">​Global Settings",
 				Usage:    "Target architecture for binaries and container images (e.g. amd64, arm64)",
-				Value:    func() *Architecture { p := Architecture("amd64"); return &p }()},
+				Value:    func() *Architecture { p := Architecture(runtime.GOARCH); return &p }()},
 			&cli.BoolFlag{
 				Name:     "debug",
 				Aliases:  []string{"d"},

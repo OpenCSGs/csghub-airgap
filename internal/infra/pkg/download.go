@@ -15,6 +15,14 @@ import (
 
 const NvidiaContainerToolkitVersion = "1.18.0-1"
 
+// Download locations for when packages cannot be fetched automatically
+// (cross-architecture download or non-Linux hosts).
+const (
+	InstallGuideURL = "https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html"
+	DebianRepoURL   = "https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list"
+	RpmRepoURL      = "https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo"
+)
+
 var packages = []string{
 	fmt.Sprintf("nvidia-container-toolkit=%s", NvidiaContainerToolkitVersion),
 	fmt.Sprintf("nvidia-container-toolkit-base=%s", NvidiaContainerToolkitVersion),
@@ -22,9 +30,19 @@ var packages = []string{
 	fmt.Sprintf("libnvidia-container1=%s", NvidiaContainerToolkitVersion),
 }
 
+// PackageList returns the NVIDIA packages (with pinned versions) that a bundle needs.
+func PackageList() string {
+	return strings.Join(packages, " ")
+}
+
 // Download sets up NVIDIA container toolkit repository depending on the Linux distro
 func Download(destDir string) error {
 	if runtime.GOOS != "linux" {
+		log.Warnf("Cannot download NVIDIA container toolkit packages on %s (Linux required)", runtime.GOOS)
+		log.Warnf("Download them manually, e.g. apt/dnf/zypper install %s", PackageList())
+		log.Warnf("Debian/Ubuntu repo: %s", DebianRepoURL)
+		log.Warnf("RHEL/Fedora/openSUSE repo: %s", RpmRepoURL)
+		log.Warnf("See install guide: %s", InstallGuideURL)
 		return nil
 	}
 

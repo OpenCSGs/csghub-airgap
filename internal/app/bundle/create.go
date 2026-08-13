@@ -26,7 +26,10 @@ func (s *Spec) Create() error {
 		}
 	} else {
 		log.Warnf("Skipping package download: cross-architecture download is not supported (target=%s, host=%s)", s.Arch, runtime.GOARCH)
-		log.Warnf("Please download the required packages for the target architecture manually: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html")
+		log.Warnf("Download the required packages manually, e.g. apt/dnf/zypper install %s", pkg.PackageList())
+		log.Warnf("Debian/Ubuntu repo: %s", pkg.DebianRepoURL)
+		log.Warnf("RHEL/Fedora/openSUSE repo: %s", pkg.RpmRepoURL)
+		log.Warnf("See install guide: %s", pkg.InstallGuideURL)
 	}
 
 	if !s.SkipK3s {

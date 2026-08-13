@@ -92,7 +92,9 @@ sudo csghub-airgap create [options]
 | `--arch`   | `-a`  | Target architecture (amd64, arm64) | Depending on the local environment |
 | `--debug`  | `-d`  | Enable debug logging               | `false`                            |
 
-***Notes:** create cross-platform cannot download packages for runtime.* 
+***Notes:** create cross-platform cannot download packages for runtime.*
+
+***Notes:** Creating a bundle on macOS is supported, but the NVIDIA container toolkit system packages are not downloaded on non-Linux hosts, so they must be fetched manually on a Linux machine. Also, the default `--flannel-iface` is detected from the build machine (e.g. `en0` on macOS); it may differ on the target Linux host and should be overridden with `--k3s-arg` if needed.* 
 
 ##### K3s Options
 

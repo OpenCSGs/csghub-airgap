@@ -17,8 +17,13 @@ func LoadBundleSpec() (*BundleSpec, error) {
 		return nil, err
 	}
 
+	ks := NewK3sSpec()
+	// Bundles are only ever deployed on Linux, so always bundle the Linux
+	// helm binary even when create runs on another OS (e.g. macOS).
+	ks.TargetOS = "linux"
+
 	return &BundleSpec{
-		K3s:     NewK3sSpec(),
+		K3s:     ks,
 		SkipK3s: false,
 		Charts:  charts,
 		Arch:    runtime.GOARCH,

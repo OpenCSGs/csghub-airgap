@@ -94,6 +94,8 @@ sudo csghub-airgap create [options]
 
 ***注意：** 交叉平台创建无法下载运行时软件包。*
 
+***注意：** 在 macOS 上创建离线包是受支持的，但非 Linux 主机不会自动下载 NVIDIA 容器工具包系统包，需要在 Linux 机器上手动获取。另外，默认的 `--flannel-iface` 取自创建机（macOS 上通常为 `en0`），可能与目标 Linux 主机的网卡名不同，如有需要请通过 `--k3s-arg` 覆盖。*
+
 ##### K3s 选项
 
 | 参数         | 说明                                    | 默认值  |
