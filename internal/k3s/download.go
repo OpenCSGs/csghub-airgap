@@ -1,6 +1,7 @@
 package k3s
 
 import (
+	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/infra/file"
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
@@ -29,7 +30,7 @@ func Download(ks *spec.K3sSpec) error {
 			Dest: ks.ImagePath(),
 		},
 		{
-			Src:        ks.ScriptURL,
+			Src:        config.MaybeWrapProxy(ks.ScriptURL),
 			Dest:       ks.ScriptPath(),
 			Executable: true,
 		},

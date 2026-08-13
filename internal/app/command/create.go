@@ -37,6 +37,11 @@ func Create() *cli.Command {
 				Usage:    "Enable debug logging",
 			},
 			&cli.BoolFlag{
+				Name:     "proxy",
+				Category: ">​Global Settings",
+				Usage:    "Use ghfast.top proxy prefix for GitHub downloads",
+			},
+			&cli.BoolFlag{
 				Name:     "skip-k3s",
 				Category: "> ‌K3s Settings",
 				Usage:    "Skip K3s installation",
@@ -102,6 +107,7 @@ func Create() *cli.Command {
 			// init config
 			config.InitBaseDir(c)
 			config.InitArchitecture(c)
+			config.InitProxy(c)
 
 			// load spec
 			bs, err := spec.LoadBundleSpec()

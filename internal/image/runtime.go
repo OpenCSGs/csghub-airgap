@@ -2,6 +2,7 @@ package image
 
 import (
 	"context"
+	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/log"
 	"encoding/json"
 	"fmt"
@@ -113,10 +114,10 @@ func listRuntimeImagesGitHub(ctx context.Context, version string, categoryFilter
 		}
 
 		g.Go(func() error {
-			rawURL := fmt.Sprintf(
-				"https://ghfast.top/https://raw.githubusercontent.com/OpenCSGs/csghub-server/%s/%s",
+			rawURL := config.MaybeWrapProxy(fmt.Sprintf(
+				"https://raw.githubusercontent.com/OpenCSGs/csghub-server/%s/%s",
 				ref, f.Path,
-			)
+			))
 
 			data, err := downloadToMemory(ctx, rawURL)
 			if err != nil {

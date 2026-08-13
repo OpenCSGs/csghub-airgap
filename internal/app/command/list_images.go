@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/image"
 	"csghub-airgap/internal/log"
 	"encoding/json"
@@ -48,6 +49,11 @@ func ListImages() *cli.Command {
 				Usage:    "Filter by compute type: cpu, gpu, dcu (can specify multiple, comma-separated)",
 				Category: "Query Options",
 			},
+			&cli.BoolFlag{
+				Name:     "proxy",
+				Usage:    "Use ghfast.top proxy prefix for GitHub downloads",
+				Category: "Query Options",
+			},
 			&cli.StringFlag{
 				Name:     "format",
 				Aliases:  []string{"f"},
@@ -58,6 +64,7 @@ func ListImages() *cli.Command {
 		},
 		Action: func(c *cli.Context) error {
 			log.Init(false)
+			config.InitProxy(c)
 
 			source := image.Source(c.String("source"))
 			version := c.String("version")

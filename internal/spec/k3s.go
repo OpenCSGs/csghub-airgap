@@ -12,7 +12,7 @@ import (
 )
 
 type K3sSpec struct {
-	ReleaseURL  string            `yaml:"release_url" default:"https://ghfast.top/https://github.com/k3s-io/k3s/releases"`
+	ReleaseURL  string            `yaml:"release_url" default:"https://github.com/k3s-io/k3s/releases"`
 	ScriptURL   string            `yaml:"script_url" default:"https://get.k3s.io"`
 	HelmURL     string            `yaml:"helm_url" default:"https://get.helm.sh"`
 	HelmVersion string            `yaml:"helm_version" default:"v3.20.1"`
@@ -30,7 +30,7 @@ func NewK3sSpec() *K3sSpec {
 	}
 
 	return &K3sSpec{
-		ReleaseURL: "https://ghfast.top/https://github.com/k3s-io/k3s/releases",
+		ReleaseURL: "https://github.com/k3s-io/k3s/releases",
 		ScriptURL:  "https://get.k3s.io",
 		InstallEnvs: map[string]string{
 			"INSTALL_K3S_SKIP_DOWNLOAD": "true",
@@ -54,7 +54,7 @@ func (ks *K3sSpec) Dir() string {
 func (ks *K3sSpec) BaseURL() string {
 	version, _ := ks.GetEnv("INSTALL_K3S_VERSION")
 
-	baseURL, err := url.JoinPath(ks.ReleaseURL, "download", version)
+	baseURL, err := url.JoinPath(config.MaybeWrapProxy(ks.ReleaseURL), "download", version)
 	if err != nil {
 		log.Fatalf("failed to generate k3s download URL %s", err)
 	}

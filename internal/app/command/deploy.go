@@ -30,6 +30,11 @@ func Deploy() *cli.Command {
 				Usage:    "Enable debug logging",
 			},
 			&cli.BoolFlag{
+				Name:     "proxy",
+				Category: ">\u200BGlobal Settings",
+				Usage:    "Use ghfast.top proxy prefix for GitHub downloads",
+			},
+			&cli.BoolFlag{
 				Name:     "skip-k3s",
 				Category: "> \u200CK3s Settings",
 				Usage:    "Skip K3s installation",
@@ -79,8 +84,9 @@ func Deploy() *cli.Command {
 			// init logging
 			log.Init(c.Bool("debug"))
 
-			// Load manifest from YAMLs
+			// init config
 			config.InitBaseDir(c)
+			config.InitProxy(c)
 
 			// Run as user root
 			if err := user.EnsureRoot(); err != nil {
