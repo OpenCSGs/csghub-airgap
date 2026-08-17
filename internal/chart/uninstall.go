@@ -15,7 +15,12 @@ func Uninstall(spec *spec.ChartSpec) error {
 
 	// Initialize Helm settings
 	settings := cli.New()
-	settings.KubeConfig = "/etc/rancher/k3s/k3s.yaml"
+	kubeconfig, err := DiscoverKubeConfig()
+	if err != nil {
+		return err
+	}
+	settings.KubeConfig = kubeconfig
+	log.Debugf("Using kubeconfig: %s", kubeconfig)
 
 	if namespace != "" {
 		settings.SetNamespace(namespace)
