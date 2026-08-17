@@ -4,6 +4,7 @@ import (
 	"context"
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
+	"fmt"
 	"os"
 	"time"
 
@@ -20,8 +21,14 @@ func Import(spec *spec.ImageSpec) error {
 	log.Infof("Start images importing %s", imageFilePath)
 	start := time.Now()
 
+	sock, err := discoverContainerdSocket()
+	if err != nil {
+		return err
+	}
+	log.Debugf("Using containerd socket: %s", sock)
+
 	ctx := namespaces.WithNamespace(context.Background(), "k8s.io")
-	client, err := containerd.New("/run/k3s/containerd/containerd.sock")
+	client, err := containerd.New(sock)
 	if err != nil {
 		return err
 	}
@@ -38,6 +45,24 @@ func Import(spec *spec.ImageSpec) error {
 		return err
 	}
 
-	log.Infof("Imported %d images into k3s (elapsed %.3fs)", len(images), time.Since(start).Seconds())
+	log.Infof("Imported %d images into containerd (elapsed %.3fs)", len(images), time.Since(start).Seconds())
 	return nil
+}
+
+// discoverContainerdSocket returns the first reachable containerd socket path,
+// trying k3s first and falling back to the standard containerd locations.
+// Used by import so it works both with a k3s host and with a stock k8s
+// deployment (deploy --skip-k3s).
+func discoverContainerdSocket() (string, error) {
+	candidates := []string{
+		"/run/k3s/containerd/containerd.sock",
+		"/run/containerd/containerd.sock",
+		"/var/run/containerd/containerd.sock",
+	}
+	for _, p := range candidates {
+		if _, err := os.Stat(p); err == nil {
+			return p, nil
+		}
+	}
+	return "", fmt.Errorf("no containerd socket found (tried %v)", candidates)
 }
