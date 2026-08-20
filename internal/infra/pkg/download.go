@@ -108,7 +108,7 @@ func Download(destDir string) error {
 
 		pkgStr := strings.Join(packages, " ")
 		cmd = fmt.Sprintf(
-			"apt-get install --download-only --no-install-recommends -y -o APT::Sandbox::User=root "+
+			"apt-get install --download-only --no-install-recommends --allow-downgrades -y -o APT::Sandbox::User=root "+
 				"-o Dir::Cache=%s -o Dir::Cache::archives=%s %s",
 			packageDir,
 			packageDir,
