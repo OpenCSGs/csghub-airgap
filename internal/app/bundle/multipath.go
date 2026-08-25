@@ -17,23 +17,46 @@ import (
 	"csghub-airgap/internal/log"
 )
 
-const multipathServiceName = "multipathd"
+const (
+	// multipathd is the systemd service name; `multipathd.socket` is the
+	// socket-activation unit that re-triggers multipathd when a client
+	// connects to /org/kernel/linux/storage/multipathd. Both must be
+	// stopped+disabled together — leaving the socket active lets systemd
+	// restart multipathd behind the operator's back. All mainstream distros
+	// (Debian/Ubuntu, RHEL/CentOS/Fedora, openSUSE/SLES) ship the same two
+	// units from upstream multipath-tools.
+	multipathServiceName = "multipathd"
+	multipathSocketName  = "multipathd.socket"
+)
 
-// checkMultipath inspects the host for an active multipathd service. When
-// found and quiet is false, the operator is prompted to either stop+disable
-// it (y) or continue with multipath running (n). When quiet is true, the
-// service is stopped and disabled without asking.
+// multipathUnits are the systemd units to stop and disable in order. The
+// service is listed first so the daemon is gone before the socket is
+// retired; the socket may be absent on hosts that did not install it, and
+// is therefore tolerated as a no-op.
+var multipathUnits = []string{multipathServiceName, multipathSocketName}
+
+// checkMultipath inspects the host for an active multipathd service or
+// socket. When found and quiet is false, the operator is prompted to either
+// stop+disable multipath (y) or continue with multipath running (n). When
+// quiet is true, multipath is stopped and disabled without asking.
 //
-// Returns nil when no action is needed (service inactive or absent) or when
-// the chosen action completed successfully. Errors from systemctl are
-// surfaced but never block the install — the operator can still proceed.
+// Returns nil when no action is needed (nothing active) or when the chosen
+// action completed. Errors from systemctl are surfaced but never block the
+// install — the operator can still proceed.
 func checkMultipath(quiet bool) error {
-	active, err := osi.IsServiceActive(multipathServiceName)
-	if err != nil {
-		log.Debugf("multipath check skipped: %v", err)
-		return nil
+	anyActive := false
+	for _, unit := range multipathUnits {
+		active, err := osi.IsServiceActive(unit)
+		if err != nil {
+			log.Debugf("multipath unit %s check skipped: %v", unit, err)
+			continue
+		}
+		if active {
+			anyActive = true
+			break
+		}
 	}
-	if !active {
+	if !anyActive {
 		log.Debugf("multipathd is not active; nothing to do")
 		return nil
 	}
@@ -64,20 +87,37 @@ func checkMultipath(quiet bool) error {
 	return disableMultipath()
 }
 
-// disableMultipath stops the running service and prevents it from
-// starting at boot. Errors from either step are logged but not returned
-// so a stuck/half-broken service cannot block the install.
+// disableMultipath stops and disables every multipath systemd unit. A
+// missing unit (e.g. the socket not installed on a minimal host) is
+// tolerated as a no-op; real errors are logged but never block the install.
 func disableMultipath() error {
-	if err := osi.StopService(multipathServiceName); err != nil {
-		log.Warnf("Failed to stop multipathd: %v", err)
-		log.Warnf("Continuing; you may need to stop it manually before the chart install")
-		return nil
-	}
-	if err := osi.DisableService(multipathServiceName); err != nil {
-		log.Warnf("Failed to disable multipathd: %v", err)
-		log.Warnf("multipathd was stopped but will restart on reboot")
-		return nil
+	for _, unit := range multipathUnits {
+		if err := osi.StopService(unit); err != nil {
+			if !isMissingUnit(err) {
+				log.Warnf("Failed to stop %s: %v", unit, err)
+				log.Warnf("Continuing; you may need to stop it manually before the chart install")
+			} else {
+				log.Debugf("unit %s not present, skipping stop", unit)
+			}
+			continue
+		}
+		if err := osi.DisableService(unit); err != nil {
+			if !isMissingUnit(err) {
+				log.Warnf("Failed to disable %s: %v", unit, err)
+			} else {
+				log.Debugf("unit %s not present, skipping disable", unit)
+			}
+		}
 	}
 	log.Infof("multipathd stopped and disabled")
 	return nil
+}
+
+// isMissingUnit reports whether a systemctl error means the unit file does
+// not exist on this host (as opposed to a real failure).
+func isMissingUnit(err error) bool {
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "not loaded") ||
+		strings.Contains(msg, "does not exist") ||
+		strings.Contains(msg, "not found")
 }
