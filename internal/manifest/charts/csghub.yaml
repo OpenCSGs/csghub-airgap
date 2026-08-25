@@ -33,7 +33,7 @@ values:
     lws:
       image:
         manager:
-          repository: opencsg-registry.cn-beijing.cr.aliyuncs.com/opencsghq/lws
+          repository: opencsghq/lws
     argo:
       images:
         pullPolicy: IfNotPresent
