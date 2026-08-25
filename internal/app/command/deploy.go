@@ -70,8 +70,7 @@ func Deploy() *cli.Command {
 			&cli.BoolFlag{
 				Name:     "skip-nvdp",
 				Category: "> \u200DCharts Settings",
-				Usage:    "Skip NVDP installation",
-				Value:    true,
+				Usage:    "Skip NVDP installation. Defaults to false on deploy; auto-skipped when no NVIDIA GPU is detected on the host",
 			},
 			&cli.StringSliceFlag{
 				Name:     "set",

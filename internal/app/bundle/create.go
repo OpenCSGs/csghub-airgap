@@ -21,7 +21,9 @@ func (s *Spec) Create() error {
 	}
 
 	if s.Arch == runtime.GOARCH {
-		if err := pkg.Download(config.DefaultBaseDir); err != nil {
+		if !nvdpEnabled(s.Charts) {
+			log.Infof("Skipping NVIDIA toolkit package download (nvdp chart disabled)")
+		} else if err := pkg.Download(config.DefaultBaseDir); err != nil {
 			return err
 		}
 	} else {
