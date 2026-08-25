@@ -78,7 +78,7 @@ func Export(spec *spec.ImageSpec) error {
 			} else {
 				digest := localImageDigestStr(imgName)
 				localCount++
-				log.Infof("[CACHE] %s local_digest=%s (skipped remote pull)", imgName, digest)
+				log.Infof("[CACHE] using %s local_digest=%s (skipped remote pull)", imgName, digest)
 				imgMap[imgName] = img
 				cacheHits = append(cacheHits, cacheHitEntry{
 					Image:       imgName,
@@ -99,7 +99,7 @@ func Export(spec *spec.ImageSpec) error {
 		}
 		digest := imgDigestStr(img)
 		remoteCount++
-		log.Infof("[REMOTE] %s digest=%s", imgName, digest)
+		log.Infof("[REMOTE] pulled %s digest=%s", imgName, digest)
 		imgMap[imgName] = img
 	}
 

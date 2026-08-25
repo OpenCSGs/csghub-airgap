@@ -135,8 +135,10 @@ func PullImage(image string) (v1.Image, error) {
 	<-done
 	_ = bar.Finish()
 
-	// Use unified log output for INFO level
-	log.Infof("Image pulled successfully: %s", image)
+	// The export loop logs a [REMOTE] ... digest=... line after PullImage
+	// returns, so we keep this at Debug level to avoid duplicating the
+	// success message in normal output.
+	log.Debugf("Image pulled successfully: %s", image)
 
 	return img, nil
 }

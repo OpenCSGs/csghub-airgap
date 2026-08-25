@@ -71,10 +71,10 @@ func Download(destDir string) error {
 	// through to a fresh download.
 	if !NoCache {
 		if ok, reason := validateCache(packageDir); ok {
-			log.Infof("[CACHE] NVIDIA packages valid (%s), skipping download", reason)
+			log.Infof("Reusing cached NVIDIA packages (%s), skipping download", reason)
 			return nil
 		} else if reason != "" {
-			log.Warnf("[CACHE] NVIDIA packages invalid (%s), re-downloading", reason)
+			log.Warnf("Cached NVIDIA packages invalid (%s), re-downloading", reason)
 			_ = os.Remove(filepath.Join(packageDir, lockFileName))
 		}
 	}
