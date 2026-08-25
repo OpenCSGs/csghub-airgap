@@ -42,6 +42,13 @@ func Create() *cli.Command {
 				Usage:    "Use ghfast.top proxy prefix for GitHub downloads",
 			},
 			&cli.BoolFlag{
+				Name:     "force-pull",
+				Aliases:  []string{"fp"},
+				Category: ">​Global Settings",
+				Usage:    "Skip local containerd image cache and always re-pull from registry",
+				Value:    false,
+			},
+			&cli.BoolFlag{
 				Name:     "skip-k3s",
 				Category: "> ‌K3s Settings",
 				Usage:    "Skip K3s installation",
@@ -103,6 +110,10 @@ func Create() *cli.Command {
 		Action: func(c *cli.Context) error {
 			// init logging
 			log.Init(c.Bool("debug"))
+
+			// Propagate --force-pull to the image package so localImageExists()
+			// bypasses the host containerd cache for this run.
+			image.ForcePullImages = c.Bool("force-pull")
 
 			// init config
 			config.InitBaseDir(c)

@@ -18,6 +18,12 @@ var (
 	localOnce         sync.Once
 )
 
+// ForcePullImages, when true, makes localImageExists() always return false so
+// the image Export loop falls through to a fresh remote pull for every image,
+// bypassing the host's containerd content store. It is set from the
+// --force-pull / -fp CLI flag in the `create` command's Action.
+var ForcePullImages = false
+
 // ctrCommand builds the exec.Cmd for a ctr operation.
 // If k3s is on PATH, it uses "k3s ctr -n k8s.io ..."; otherwise "ctr -n k8s.io ...".
 func ctrCommand(args ...string) *exec.Cmd {
@@ -54,6 +60,9 @@ func listLocalImages() map[string]struct{} {
 
 // localImageExists checks whether the given image reference exists in the local containerd store.
 func localImageExists(image string) bool {
+	if ForcePullImages {
+		return false
+	}
 	local := listLocalImages()
 	if len(local) == 0 {
 		return false
@@ -70,6 +79,35 @@ func localImageExists(image string) bool {
 	}
 
 	return false
+}
+
+// localImageDigest returns the sha256 digest of the given image as reported
+// by `ctr images ls -q <ref>`. Used by Export() to log which cached image was
+// used, so the operator can spot drift between local and remote digests.
+func localImageDigest(image string) (string, error) {
+	out, err := ctrCommand("images", "ls", "-q", image).Output()
+	if err != nil {
+		return "", fmt.Errorf("ctr images ls failed for %s: %w", image, err)
+	}
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		l := strings.TrimSpace(line)
+		if strings.HasPrefix(l, "sha256:") {
+			return l, nil
+		}
+	}
+	return "", fmt.Errorf("no sha256 digest found for %s", image)
+}
+
+// localImageDigestStr returns the local digest of image, or "<unknown>" if it
+// cannot be read. The error is logged at Debug level so it does not pollute
+// normal output.
+func localImageDigestStr(image string) string {
+	d, err := localImageDigest(image)
+	if err != nil {
+		log.Debugf("Failed to read local digest for %s: %v", image, err)
+		return "<unknown>"
+	}
+	return d
 }
 
 // exportLocalImage exports an image from the local containerd store and returns it as a v1.Image
