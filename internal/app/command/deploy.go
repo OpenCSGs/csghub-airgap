@@ -72,6 +72,12 @@ func Deploy() *cli.Command {
 				Category: "> \u200DCharts Settings",
 				Usage:    "Skip NVDP installation. Defaults to false on deploy; auto-skipped when no NVIDIA GPU is detected on the host",
 			},
+			&cli.BoolFlag{
+				Name:     "quiet",
+				Aliases:  []string{"q"},
+				Category: "> Preflight",
+				Usage:    "Skip interactive prompts. When set, multipathd is auto-disabled (instead of prompting)",
+			},
 			&cli.StringSliceFlag{
 				Name:     "set",
 				Aliases:  []string{"s"},
@@ -101,6 +107,8 @@ func Deploy() *cli.Command {
 			if bs.Arch != runtime.GOARCH {
 				log.Fatalf("Architecture mismatch: bundle requires %s, but current system is %s", bs.Arch, runtime.GOARCH)
 			}
+
+			bs.Quiet = c.Bool("quiet")
 
 			// apply CLI overrides
 			if err := ApplyOverrides(bs, c); err != nil {

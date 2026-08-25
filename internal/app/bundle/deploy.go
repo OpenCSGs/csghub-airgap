@@ -57,6 +57,13 @@ func (s *Spec) Deploy() error {
 		}
 	}
 
+	// Pre-flight: multipathd interferes with Longhorn's block-device
+	// handling. Stop and disable it (after a y/N prompt unless --quiet is
+	// set) before any csghub chart that pulls in Longhorn gets installed.
+	if err := checkMultipath(s.Quiet); err != nil {
+		return err
+	}
+
 	for _, c := range s.Charts {
 		if !c.Enabled {
 			log.Debugf("Skipping disabled chart %s", c.ChartName)
