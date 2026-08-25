@@ -5,6 +5,7 @@ import (
 	"csghub-airgap/internal/app/bundle"
 	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/image"
+	"csghub-airgap/internal/infra/pkg"
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
 	"runtime"
@@ -46,6 +47,13 @@ func Create() *cli.Command {
 				Aliases:  []string{"fp"},
 				Category: ">​Global Settings",
 				Usage:    "Skip local containerd image cache and always re-pull from registry",
+				Value:    false,
+			},
+			&cli.BoolFlag{
+				Name:     "no-pkg-cache",
+				Aliases:  []string{"npc"},
+				Category: ">​Global Settings",
+				Usage:    "Skip cached NVIDIA package directory and always re-download apt/dnf/zypper packages",
 				Value:    false,
 			},
 			&cli.BoolFlag{
@@ -114,6 +122,10 @@ func Create() *cli.Command {
 			// Propagate --force-pull to the image package so localImageExists()
 			// bypasses the host containerd cache for this run.
 			image.ForcePullImages = c.Bool("force-pull")
+
+			// Propagate --no-pkg-cache to the pkg package so the NVIDIA package
+			// download skips the cache lock check and always re-pulls.
+			pkg.NoCache = c.Bool("no-pkg-cache")
 
 			// init config
 			config.InitBaseDir(c)
