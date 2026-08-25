@@ -57,6 +57,13 @@ func Export(spec *spec.ImageSpec) error {
 	var tempTars []string
 	var cacheHits []cacheHitEntry
 
+	// Dump the full image list at debug so an operator can sanity-check what
+	// is about to be pulled (or skipped via cache) before any network I/O.
+	log.Debugf("Exporting %d image(s) for chart %s@%s:", len(spec.Images), spec.ChartName, spec.ChartVersion)
+	for i, imgName := range spec.Images {
+		log.Debugf("  [%d] %s", i, imgName)
+	}
+
 	// Clean up temp tar files after MultiSave (or any early return) reads them.
 	defer func() {
 		for _, p := range tempTars {
