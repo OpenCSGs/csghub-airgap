@@ -24,6 +24,18 @@ func (r runtimeItem) FilterValue() string {
 		r.ImageInfo.Image, r.ImageInfo.ComputeType, r.ImageInfo.EngineVer)
 }
 
+// selectable is the contract an item must satisfy for the shared
+// imageSelectorModel to toggle it (space), select all (a) and deselect all
+// (A). Both runtimeItem and mainImageItem implement it. SetSelected returns
+// the updated item because these are value-typed list items.
+type selectable interface {
+	SetSelected(bool) selectable
+	IsSelected() bool
+}
+
+func (r runtimeItem) SetSelected(b bool) selectable { r.Selected = b; return r }
+func (r runtimeItem) IsSelected() bool              { return r.Selected }
+
 // categoryHeader is a list item that displays a category header (non-selectable).
 type categoryHeader string
 
@@ -38,12 +50,11 @@ func (d itemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	return nil
 }
 
-// selectAll sets the Selected field on all runtimeItem items to the given value.
+// selectAll sets the Selected field on all selectable items to the given value.
 func selectAll(items []list.Item, selected bool) {
 	for i, it := range items {
-		if ri, ok := it.(runtimeItem); ok {
-			ri.Selected = selected
-			items[i] = ri
+		if s, ok := it.(selectable); ok {
+			items[i] = s.SetSelected(selected).(list.Item)
 		}
 	}
 }
@@ -134,20 +145,19 @@ func (m imageSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Toggle selection for current item (skip category headers)
 			items := m.list.Items()
 			if idx := m.list.Index(); idx >= 0 && idx < len(items) {
-				if ri, ok := items[idx].(runtimeItem); ok {
-					ri.Selected = !ri.Selected
-					items[idx] = ri
+				if s, ok := items[idx].(selectable); ok {
+					items[idx] = s.SetSelected(!s.IsSelected()).(list.Item)
 					m.list.SetItems(items)
 				}
 			}
 			return m, nil
 		case "a":
-			// Select all runtime items
+			// Select all items
 			selectAll(m.list.Items(), true)
 			m.list.SetItems(m.list.Items())
 			return m, nil
 		case "A":
-			// Deselect all runtime items
+			// Deselect all items
 			selectAll(m.list.Items(), false)
 			m.list.SetItems(m.list.Items())
 			return m, nil

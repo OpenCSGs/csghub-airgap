@@ -4,11 +4,13 @@ import (
 	"csghub-airgap/internal/app/metadata"
 	"csghub-airgap/internal/chart"
 	"csghub-airgap/internal/config"
+	"csghub-airgap/internal/image"
 	iu "csghub-airgap/internal/image/utils"
-	"csghub-airgap/internal/infra/os"
+	osi "csghub-airgap/internal/infra/os"
 	"csghub-airgap/internal/infra/pkg"
 	"csghub-airgap/internal/k3s"
 	"csghub-airgap/internal/log"
+	"os"
 	"runtime"
 	"time"
 )
@@ -16,7 +18,7 @@ import (
 func (s *Spec) Create() error {
 	start := time.Now()
 
-	if err := os.CheckArch(); err != nil {
+	if err := osi.CheckArch(); err != nil {
 		return err
 	}
 
@@ -51,14 +53,27 @@ func (s *Spec) Create() error {
 			continue
 		}
 
-		// Pull the chart. Skipping a chart is expressed via --skip <name>
-		// which flips c.Enabled=false (handled above), so this chart always
-		// resolves its latest version and pulls.
-		if c.ChartVersion == "" {
-			c.ChartVersion = chart.LatestVersion(&c)
-		}
-		if err := chart.Pull(&c); err != nil {
-			return err
+		if s.SkipCharts {
+			// Prefer reusing an already-pulled chart file; if it is missing
+			// (first run with --skip charts, or image-only mode), pull it.
+			if c.ChartVersion == "" {
+				c.ChartVersion = chart.LatestVersion(&c)
+			}
+			if _, err := os.Stat(c.ChartFilePath()); err == nil {
+				log.Debugf("Skipping chart pull for %s (--skip charts, chart exists)", c.ChartName)
+			} else {
+				log.Infof("Chart %s not found; pulling despite --skip charts", c.ChartName)
+				if err := chart.Pull(&c); err != nil {
+					return err
+				}
+			}
+		} else {
+			if c.ChartVersion == "" {
+				c.ChartVersion = chart.LatestVersion(&c)
+			}
+			if err := chart.Pull(&c); err != nil {
+				return err
+			}
 		}
 
 		log.Debugf("Processing chart %s with version %s", c.ChartName, c.ChartVersion)
@@ -76,7 +91,32 @@ func (s *Spec) Create() error {
 		if c.RepoName == "csghub" {
 			runtimeImages = s.SelectedRuntimeImages
 		}
-		if err := chart.Image(&c, runtimeImages, opt, s.SkipImages, s.SkipRuntimeImages); err != nil {
+
+		// Image-only mode: --skip k3s,package,charts and image not skipped.
+		// Prompt the user with a TUI to pick which main images to export.
+		var selectedMain []string
+		if s.SkipCharts && s.SkipK3s && s.SkipPkg && !s.SkipImages {
+			if s.Quiet {
+				log.Infof("Image-only mode with --quiet: exporting all main images for %s", c.ChartName)
+			} else {
+				mainImages, err := chart.ExtractMainImages(&c, opt)
+				if err != nil {
+					return err
+				}
+				selected, err := image.SelectMainImages(c.ChartName, mainImages)
+				if err != nil {
+					return err
+				}
+				if selected == nil {
+					log.Warnf("Main image selection cancelled for %s; exporting all", c.ChartName)
+				} else {
+					log.Infof("Selected %d main images for %s", len(selected), c.ChartName)
+					selectedMain = selected
+				}
+			}
+		}
+
+		if err := chart.Image(&c, runtimeImages, opt, selectedMain, s.SkipImages, s.SkipRuntimeImages); err != nil {
 			return err
 		}
 	}

@@ -104,6 +104,10 @@ func (s *Spec) Deploy() error {
 			log.Debugf("Skipping runtime image import for %s (--skip runtime or no runtime images selected)", c.ChartName)
 		}
 
+		if s.SkipCharts {
+			log.Debugf("Skipping chart install/upgrade for %s (--skip charts)", c.ChartName)
+			continue
+		}
 		if chart.List(&c) {
 			if err := chart.Upgrade(&c); err != nil {
 				return err

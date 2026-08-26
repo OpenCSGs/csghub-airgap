@@ -55,64 +55,27 @@ var (
 // Image renders the chart, extracts the images it declares, and exports
 // them into the bundle. The main chart images and the user-selected runtime
 // images are exported as separate tars; either can be skipped with
-// skipMain / skipRuntime so `create --skip-images` (or
-// `--skip-runtime-images`) can produce a partial bundle.
-func Image(spec *is.ChartSpec, runtimeImages []string, opts iu.ExtractOption, skipMain, skipRuntime bool) error {
+// skipMain / skipRuntime so `create --skip image` (or
+// `--skip runtime`) can produce a partial bundle.
+//
+// When selectedMain is non-nil it is exported (the user picked a subset in
+// the main image TUI); when nil the full extracted main image set is used.
+func Image(spec *is.ChartSpec, runtimeImages []string, opts iu.ExtractOption, selectedMain []string, skipMain, skipRuntime bool) error {
 	// Nothing to export for this chart — avoid even rendering.
 	if skipMain && skipRuntime {
 		log.Debugf("Skipping image export for chart %s (both main and runtime skipped)", spec.ChartName)
 		return nil
 	}
 
-	manifest, err := Template(spec)
+	mainImages, err := ExtractMainImages(spec, opts)
 	if err != nil {
 		return err
 	}
 
-	var yamlResource []string
-	if opts.FromValues {
-		values, err := ShowChartValues(spec.ChartFilePath())
-		if err != nil {
-			return err
-		}
-		yamlResource = []string{string(values)}
-	} else if opts.FromKind != "" {
-		yamlResource, err = ShowKindOf(manifest, "KnativeServing")
-		if err != nil {
-			return err
-		}
-	}
-
-	rawImages := iu.ExtractAllImages(manifest, yamlResource, opts)
-	var images []string
-	for _, img := range rawImages {
-		images = append(images, imageRegComplete(img))
-	}
-
-	// only csghub supports runtime images
-	if spec.RepoName == "csghub" {
-		// static images
-		for _, img := range imageList {
-			images = append(images, imageRegComplete(img))
-		}
-
-		// user-selected runtime images
-		if len(runtimeImages) > 0 {
-			for i, img := range runtimeImages {
-				runtimeImages[i] = imageRegComplete(img)
-			}
-			log.Debugf("Using %d user-selected runtime images", len(runtimeImages))
-		}
-	}
-
-	// extra_images declared in the chart manifest are bundled regardless of
-	// repo_name; they cover cases where the chart itself does not render the
-	// image (e.g. runtime-injected sidecars like argoexec).
-	if len(spec.ExtraImages) > 0 {
-		log.Debugf("Including %d extra images from chart manifest", len(spec.ExtraImages))
-		for _, img := range spec.ExtraImages {
-			images = append(images, imageRegComplete(img))
-		}
+	// Use the user-selected subset when provided (image-only TUI mode).
+	images := mainImages
+	if selectedMain != nil {
+		images = selectedMain
 	}
 
 	if !skipMain {
@@ -130,6 +93,10 @@ func Image(spec *is.ChartSpec, runtimeImages []string, opts iu.ExtractOption, sk
 	}
 
 	if !skipRuntime && len(runtimeImages) > 0 {
+		// Registry-complete the runtime refs before export (same as before).
+		for i, img := range runtimeImages {
+			runtimeImages[i] = imageRegComplete(img)
+		}
 		imageSpec := &is.ImageSpec{
 			Images:       runtimeImages,
 			ChartName:    fmt.Sprintf("%s-%s", spec.ChartName, "runtime"),
@@ -142,6 +109,56 @@ func Image(spec *is.ChartSpec, runtimeImages []string, opts iu.ExtractOption, sk
 	}
 
 	return nil
+}
+
+// ExtractMainImages renders the chart and returns the full set of main
+// images it declares (chart images + static imageList + extra_images, all
+// registry-completed). Runtime images are NOT included. Used by the
+// image-only mode to build the main image selection TUI.
+func ExtractMainImages(spec *is.ChartSpec, opts iu.ExtractOption) ([]string, error) {
+	manifest, err := Template(spec)
+	if err != nil {
+		return nil, err
+	}
+
+	var yamlResource []string
+	if opts.FromValues {
+		values, err := ShowChartValues(spec.ChartFilePath())
+		if err != nil {
+			return nil, err
+		}
+		yamlResource = []string{string(values)}
+	} else if opts.FromKind != "" {
+		yamlResource, err = ShowKindOf(manifest, "KnativeServing")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	rawImages := iu.ExtractAllImages(manifest, yamlResource, opts)
+	var images []string
+	for _, img := range rawImages {
+		images = append(images, imageRegComplete(img))
+	}
+
+	// static images (csghub only)
+	if spec.RepoName == "csghub" {
+		for _, img := range imageList {
+			images = append(images, imageRegComplete(img))
+		}
+	}
+
+	// extra_images declared in the chart manifest are bundled regardless of
+	// repo_name; they cover cases where the chart itself does not render the
+	// image (e.g. runtime-injected sidecars like argoexec).
+	if len(spec.ExtraImages) > 0 {
+		log.Debugf("Including %d extra images from chart manifest", len(spec.ExtraImages))
+		for _, img := range spec.ExtraImages {
+			images = append(images, imageRegComplete(img))
+		}
+	}
+
+	return images, nil
 }
 
 func imageRegComplete(img string) string {

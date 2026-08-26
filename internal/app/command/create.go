@@ -66,7 +66,7 @@ func Create() *cli.Command {
 			&cli.StringSliceFlag{
 				Name:     "skip",
 				Category: ">​Global",
-				Usage:    "Skip components: comma-separated chart names (csghub, longhorn, nvdp) and/or kinds (k3s, image, runtime, package)",
+				Usage:    "Skip components: comma-separated chart names (csghub, longhorn, nvdp) and/or kinds (k3s, charts, image, runtime, package)",
 			},
 			&cli.BoolFlag{
 				Name:     "quiet",

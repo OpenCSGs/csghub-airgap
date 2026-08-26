@@ -24,6 +24,7 @@ func normalizeVersion(v string) string {
 // the coarse-grained component skips.
 type skipSet struct {
 	K3s           bool
+	Charts        bool
 	Images        bool
 	RuntimeImages bool
 	Pkg           bool
@@ -34,10 +35,12 @@ type skipSet struct {
 // Accepted values (case-insensitive, commas and repeated flags both work):
 //
 //	k3s          skip k3s download/install
+//	charts       skip chart pull (reuse existing chart files) but still
+//	             export main images
 //	image        skip ALL image pull (main chart images and runtime images)
 //	runtime      skip only the user-selected runtime images
 //	package      skip NVIDIA container toolkit package download/install
-//	<chart name> skip that specific chart (any chart in the manifest)
+//	<chart name> skip that specific chart entirely (pull + its images)
 func parseSkips(values []string) skipSet {
 	var sk skipSet
 	seen := make(map[string]struct{})
@@ -61,6 +64,8 @@ func parseSkips(values []string) skipSet {
 		switch t {
 		case "k3s":
 			sk.K3s = true
+		case "charts":
+			sk.Charts = true
 		case "image":
 			sk.Images = true
 			sk.RuntimeImages = true
@@ -80,6 +85,9 @@ func ApplyOverrides(b *spec.BundleSpec, c *cli.Context) error {
 	sk := parseSkips(c.StringSlice("skip"))
 	if sk.K3s {
 		b.SkipK3s = true
+	}
+	if sk.Charts {
+		b.SkipCharts = true
 	}
 	if sk.Images {
 		b.SkipImages = true

@@ -20,6 +20,7 @@ func NewFromSpec(bs *spec.BundleSpec) *Spec {
 		K3s:                   bs.K3s,
 		SkipK3s:               bs.SkipK3s,
 		Quiet:                 bs.Quiet,
+		SkipCharts:            bs.SkipCharts,
 		SkipImages:            bs.SkipImages,
 		SkipRuntimeImages:     bs.SkipRuntimeImages,
 		SkipPkg:               bs.SkipPkg,

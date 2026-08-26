@@ -8,6 +8,10 @@ type BundleSpec struct {
 	// Quiet suppresses interactive prompts in `deploy` (e.g. the
 	// multipathd disable question) and auto-applies the safe default.
 	Quiet                   bool        `yaml:"quiet,omitempty"`
+	// SkipCharts skips pulling (create) / installing (deploy) the Helm
+	// charts, reusing chart files that already exist. Main images and
+	// runtime images are still exported/imported.
+	SkipCharts              bool        `yaml:"skip_charts,omitempty"`
 	// SkipImages skips exporting (create) / importing (deploy) the main
 	// chart images. Charts and runtime images still run.
 	SkipImages              bool        `yaml:"skip_images,omitempty"`
