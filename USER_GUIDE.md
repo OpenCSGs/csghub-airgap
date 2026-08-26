@@ -327,7 +327,12 @@ csghub-airgap list-images --category notebook --format json
 > `--skip image` 会同时设置 `SkipRuntimeImages`，即一并跳过 runtime 镜像。
 > 传入了图表清单中不存在的名字会被忽略并给出警告。
 
-**image-only 模式**：`--skip k3s,charts,package`（且不 `--skip image`）会进入「只导出镜像」模式，为每个图表弹出主镜像选择界面。
+**image-only 模式**：`--skip k3s,charts,package`（且不 `--skip image`）会进入「只导出镜像」模式，为每个图表弹出主镜像选择界面。若同时加 `--quiet`，则跳过该选择界面，直接导出该图表全部主镜像。
+
+```bash
+# 只导出镜像，并跳过主镜像选择（导出全部主镜像）
+sudo csghub-airgap create --skip k3s,charts,package --quiet
+```
 
 ---
 
