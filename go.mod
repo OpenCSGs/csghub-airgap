@@ -8,6 +8,7 @@ require (
 	charm.land/lipgloss/v2 v2.0.2
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/containerd/containerd v1.7.30
+	github.com/distribution/reference v0.6.0
 	github.com/google/go-containerregistry v0.21.3
 	github.com/gosuri/uitable v0.0.4
 	github.com/schollz/progressbar/v3 v3.19.0
@@ -59,7 +60,6 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/cyphar/filepath-securejoin v0.6.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/cli v29.3.0+incompatible // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.5 // indirect
