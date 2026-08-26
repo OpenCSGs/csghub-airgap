@@ -304,14 +304,16 @@ sudo csghub-airgap cleanup [options]
 | `--yes` | `-y`  | Skip confirmation and run cleanup directly | `false` |
 
 ```shell
-# Interactive cleanup (with confirmation prompt)
+# Interactive cleanup (confirmation prompt + 10s countdown, Ctrl+C to abort)
 sudo csghub-airgap cleanup
 
 # Force cleanup without confirmation
 sudo csghub-airgap cleanup --yes
 ```
 
-> This effectively runs `/usr/local/bin/k3s-uninstall.sh`. If it fails, run that script manually.
+> ⚠️ **Warning**: cleanup removes the **entire k3s cluster on this machine and ALL its data** (not just CSGHub resources), including `/var/lib/rancher/k3s` (PVCs, Longhorn volumes), `/var/lib/kubelet`, the k3s binary and systemd units. **A k3s you installed yourself on this host will be deleted too** — make sure this is intended.
+>
+> Interactive mode requires typing `yes` to confirm, then waits through a 10-second countdown (`Ctrl+C` to cancel). This effectively runs `/usr/local/bin/k3s-uninstall.sh`. If it fails, run that script manually.
 
 ### List Runtime Images
 

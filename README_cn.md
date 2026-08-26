@@ -304,14 +304,16 @@ sudo csghub-airgap cleanup [options]
 | `--yes` | `-y` | 跳过确认，直接执行清理       | `false` |
 
 ```shell
-# 交互式清理（有确认提示）
+# 交互式清理（确认提示 + 10 秒倒计时缓冲，Ctrl+C 可取消）
 sudo csghub-airgap cleanup
 
 # 直接清理，不询问
 sudo csghub-airgap cleanup --yes
 ```
 
-> 实质是执行 `/usr/local/bin/k3s-uninstall.sh`。若失败可手动执行该脚本。
+> ⚠️ **注意**：cleanup 会删除**整台机器的 k3s 及其所有数据**（不只是 CSGHub 资源），包括 `/var/lib/rancher/k3s`（PVC、Longhorn 数据）、`/var/lib/kubelet`、k3s 二进制与 systemd 服务。**若该机器上的 k3s 是你自己安装的（而非本工具部署），也会一并删除**，请务必确认。
+>
+> 交互式模式下需输入 `yes` 确认，确认后有 10 秒倒计时缓冲（`Ctrl+C` 可取消）。实质是执行 `/usr/local/bin/k3s-uninstall.sh`。若失败可手动执行该脚本。
 
 ### 列出运行时镜像 (list-images)
 
