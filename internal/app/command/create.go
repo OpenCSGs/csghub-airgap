@@ -1,7 +1,6 @@
 package command
 
 import (
-	"context"
 	"csghub-airgap/internal/app/bundle"
 	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/image"
@@ -112,30 +111,9 @@ func Create() *cli.Command {
 
 			bs.Quiet = c.Bool("quiet")
 
-			// Runtime image selection is on by default and skipped when
-			// --skip runtime (or --skip image, which also sets
-			// SkipRuntimeImages) is in effect, or when --quiet is set —
-			// both mean "don't block on an interactive prompt".
-			if !bs.SkipRuntimeImages && !bs.Quiet {
-				if !c.Bool("debug") {
-					log.Infof("Fetching available runtime images...")
-				}
-				ctx := context.Background()
-				selected, err := image.SelectRuntimeImages(ctx, image.SourceGitHub, "main")
-				if err != nil {
-					return err
-				}
-				if selected == nil {
-					log.Warn("Runtime image selection cancelled")
-				} else {
-					log.Infof("Selected %d runtime images", len(selected))
-				}
-				bs.SelectedRuntimeImages = selected
-			} else if bs.SkipRuntimeImages {
-				log.Infof("Skipping runtime image selection (--skip runtime/image)")
-			} else {
-				log.Infof("Skipping runtime image selection (--quiet)")
-			}
+			// Runtime image selection moved into bundle.Create: it runs after
+			// the csghub chart images are exported, just before the selected
+			// runtime images are pulled.
 
 			// build bundle
 			return bundle.NewFromSpec(bs).Create()

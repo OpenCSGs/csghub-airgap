@@ -92,6 +92,11 @@ func DebugFunc(f func() string) {
 	}
 }
 
+// IsDebug reports whether debug logging is enabled.
+func IsDebug() bool {
+	return Log.IsLevelEnabled(logrus.DebugLevel)
+}
+
 func SetOutput(w io.Writer) {
 	if w == nil {
 		return

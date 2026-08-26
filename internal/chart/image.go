@@ -67,18 +67,20 @@ func Image(spec *is.ChartSpec, runtimeImages []string, opts iu.ExtractOption, se
 		return nil
 	}
 
-	mainImages, err := ExtractMainImages(spec, opts)
-	if err != nil {
-		return err
-	}
-
-	// Use the user-selected subset when provided (image-only TUI mode).
-	images := mainImages
-	if selectedMain != nil {
-		images = selectedMain
-	}
-
+	// Main chart images: rendered only when actually exported, so a
+	// runtime-only call (skipMain=true) does not re-render the chart template.
 	if !skipMain {
+		mainImages, err := ExtractMainImages(spec, opts)
+		if err != nil {
+			return err
+		}
+
+		// Use the user-selected subset when provided (image-only TUI mode).
+		images := mainImages
+		if selectedMain != nil {
+			images = selectedMain
+		}
+
 		imageSpec := &is.ImageSpec{
 			Images:       images,
 			ChartName:    spec.ChartName,
@@ -103,7 +105,7 @@ func Image(spec *is.ChartSpec, runtimeImages []string, opts iu.ExtractOption, se
 			ChartVersion: spec.ChartVersion,
 		}
 
-		if err = image.Export(imageSpec); err != nil {
+		if err := image.Export(imageSpec); err != nil {
 			return err
 		}
 	}

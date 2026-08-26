@@ -111,7 +111,7 @@ func newImageSelectorModel(images []RuntimeImageInfo, width, height int) imageSe
 
 	d := itemDelegate{}
 	l := list.New(items, d, width, height)
-	l.Title = "Select runtime images (space=toggle, a=select all, A=deselect all, enter=confirm)"
+	l.Title = "Select runtime images (space=toggle, a=all, A=none, enter=confirm, empty=skip)"
 	l.SetShowStatusBar(false)
 	l.SetShowHelp(true)
 	l.SetFilteringEnabled(false) // disable filtering so space reaches delegate

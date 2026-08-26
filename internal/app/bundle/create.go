@@ -1,6 +1,7 @@
 package bundle
 
 import (
+	"context"
 	"csghub-airgap/internal/app/metadata"
 	"csghub-airgap/internal/chart"
 	"csghub-airgap/internal/config"
@@ -87,11 +88,6 @@ func (s *Spec) Create() error {
 		default:
 		}
 
-		var runtimeImages []string
-		if c.RepoName == "csghub" {
-			runtimeImages = s.SelectedRuntimeImages
-		}
-
 		// Image-only mode: --skip k3s,package,charts and image not skipped.
 		// Prompt the user with a TUI to pick which main images to export.
 		var selectedMain []string
@@ -116,8 +112,24 @@ func (s *Spec) Create() error {
 			}
 		}
 
-		if err := chart.Image(&c, runtimeImages, opt, selectedMain, s.SkipImages, s.SkipRuntimeImages); err != nil {
+		// Export the chart's own images first; the runtime images (csghub only)
+		// are decided and exported afterwards once the main images are done.
+		if err := chart.Image(&c, nil, opt, selectedMain, s.SkipImages, true); err != nil {
 			return err
+		}
+
+		// Runtime images belong to the csghub chart only. Prompt for them AFTER
+		// the main chart images are exported so the interactive selection does
+		// not sit at the very start of the run.
+		if c.RepoName == "csghub" {
+			if err := s.selectRuntimeImages(); err != nil {
+				return err
+			}
+			if !s.SkipRuntimeImages && len(s.SelectedRuntimeImages) > 0 {
+				if err := chart.Image(&c, s.SelectedRuntimeImages, opt, nil, true, false); err != nil {
+					return err
+				}
+			}
 		}
 	}
 
@@ -126,5 +138,40 @@ func (s *Spec) Create() error {
 	}
 
 	log.Infof("Create finished in %s", time.Since(start))
+	return nil
+}
+
+// selectRuntimeImages prompts the user (TUI) to pick which runtime images to
+// bundle for the csghub chart. Runs after the main chart images are exported.
+// No-op when runtime selection is disabled (--skip runtime/image) or when
+// --quiet suppresses interactive prompts. An empty TUI selection (or pressing
+// q/esc) also skips runtime images. The result is persisted to metadata.yaml
+// by the caller's metadata.Save.
+func (s *Spec) selectRuntimeImages() error {
+	switch {
+	case s.SkipRuntimeImages:
+		log.Infof("Skipping runtime image selection (--skip runtime/image)")
+		return nil
+	case s.Quiet:
+		log.Infof("Skipping runtime image selection (--quiet)")
+		return nil
+	}
+
+	if !log.IsDebug() {
+		log.Infof("Fetching available runtime images...")
+	}
+	selected, err := image.SelectRuntimeImages(context.Background(), image.SourceGitHub, "main")
+	if err != nil {
+		return err
+	}
+	s.SelectedRuntimeImages = selected
+	switch {
+	case selected == nil:
+		log.Warn("Runtime image selection cancelled; skipping runtime images")
+	case len(selected) == 0:
+		log.Warn("No runtime images selected; skipping runtime image export")
+	default:
+		log.Infof("Selected %d runtime images", len(selected))
+	}
 	return nil
 }
