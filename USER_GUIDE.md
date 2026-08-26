@@ -33,7 +33,7 @@ sudo csghub-airgap create [options]
 | `--arch`         |      | 目标架构（`amd64`、`arm64`），默认取本机架构                              | 当前系统架构                |
 | `--debug`        | `-d` | 开启调试日志                                                            | `false`                     |
 | `--proxy`        |      | 对 GitHub 下载使用 `ghfast.top` 代理前缀                                  | `false`                     |
-| `--force-pull`   |      | 跳过本机 containerd 镜像缓存，始终从仓库重新拉取镜像                       | `false`                     |
+| `--force-pull`   |      | 跳过本地镜像缓存（containerd 缓存 + 文件缓存），始终从仓库重新拉取镜像       | `false`                     |
 | `--no-pkg-cache` |      | 跳过 NVIDIA 软件包缓存目录，始终重新下载 apt/dnf/zypper 软件包             | `false`                     |
 | `--k3s-env`      |      | 传给 K3s 的额外环境变量（`KEY=VALUE`，可多次）                            | `[]`                        |
 | `--k3s-arg`      |      | 传给 K3s 的额外启动参数（如 `--k3s-arg=--default-runtime=nvidia`）        | `[]`                        |
@@ -408,4 +408,5 @@ kubectl get ns
 
 - 部署与清理需要 root 权限；`create` 在 Linux 上若需下载 NVIDIA 软件包也需要 root。
 - 打包配置保存在离线包的 `metadata.yaml` 中，部署时自动应用；命令行参数（`--set`、`--k3s-arg`、`--skip` 等）可在部署时覆盖。
+- **镜像文件缓存**：`create` 拉取的镜像会缓存在用户缓存目录（Linux/macOS 为 `~/.cache/csghub-airgap/images`），以镜像引用命名。这样在打包中断后重试时，已拉取的镜像直接复用，不必全部重新下载。缓存位于离线包之外，不会被一起传输。需要强制刷新时用 `--force-pull`。
 - 本工具不运行任何后台守护进程。

@@ -42,6 +42,11 @@ func Export(spec *spec.ImageSpec) error {
 		return err
 	}
 
+	// Ensure the on-disk image cache dir exists before any pull writes to it.
+	if err := os.MkdirAll(imageCacheDir(), 0755); err != nil {
+		return err
+	}
+
 	log.Infof("Start exporting %d images to %s", len(spec.Images), imageFileName)
 
 	pullStart := time.Now()
@@ -51,6 +56,7 @@ func Export(spec *spec.ImageSpec) error {
 
 	localCount := 0
 	remoteCount := 0
+	fileCacheCount := 0
 
 	imgMap := make(map[string]v1.Image)
 	var skippedImages []string
@@ -98,7 +104,24 @@ func Export(spec *spec.ImageSpec) error {
 			}
 		}
 
-		img, err = utils.PullImage(imgName)
+		// Second-tier cache: an image pulled in a previous run (stored as a
+		// per-ref tar under the user cache dir) is reused instead of hitting
+		// the registry again. Falls through to a remote pull on a cache miss.
+		if cached, ok, err := loadCachedImage(imgName); ok {
+			digest := imgDigestStr(cached)
+			fileCacheCount++
+			log.Infof("[CACHE] using %s file_cache_digest=%s (skipped remote pull)", imgName, digest)
+			imgMap[imgName] = cached
+			cacheHits = append(cacheHits, cacheHitEntry{
+				Image:       imgName,
+				LocalDigest: digest,
+			})
+			continue
+		} else if err != nil {
+			return err
+		}
+
+		img, err = utils.PullImage(imgName, imageCachePath(imgName))
 		if err != nil {
 			log.Warnf("Failed to pull image %s, skipping it: %v", imgName, err)
 			skippedImages = append(skippedImages, imgName)
@@ -139,9 +162,9 @@ func Export(spec *spec.ImageSpec) error {
 		return fmt.Errorf("error saving images %s: %v", spec.Images, err)
 	}
 
-	if localCount > 0 {
-		log.Infof("Note: %d/%d image(s) used local containerd cache; rerun with --force-pull to refresh.",
-			localCount, len(spec.Images))
+	if localCount > 0 || fileCacheCount > 0 {
+		log.Infof("Note: %d/%d image(s) served from local cache (containerd=%d, file cache=%d); rerun with --force-pull to refresh.",
+			localCount+fileCacheCount, len(spec.Images), localCount, fileCacheCount)
 	}
 
 	log.Infof("Exported %d images to %s (elapsed %.3fs)", len(spec.Images), spec.ImageFileName(), time.Since(pullStart).Seconds())
@@ -149,9 +172,9 @@ func Export(spec *spec.ImageSpec) error {
 	return nil
 }
 
-// cacheHitEntry records an image that was served from the local containerd
-// cache instead of being pulled fresh from the registry. Reported in the Cache
-// Report at the end of Export.
+// cacheHitEntry records an image that was served from a local cache (containerd
+// content store or the on-disk file cache) instead of being pulled fresh from
+// the registry. Reported in the Cache Report at the end of Export.
 type cacheHitEntry struct {
 	Image       string
 	LocalDigest string
@@ -175,7 +198,7 @@ func printCacheReport(hits []cacheHitEntry) {
 	}
 	fmt.Println()
 	log.Infof("=== Cache Report ===")
-	log.Infof("%d image(s) were served from the local containerd cache (NOT pulled fresh):", len(hits))
+	log.Infof("%d image(s) were served from the local cache (containerd or file cache), NOT pulled fresh:", len(hits))
 	log.Infof("To force a re-pull from the registry, either:")
 	log.Infof("  - rerun this command with --force-pull / -fp")
 	log.Infof("  - or: ctr -n k8s.io images rm <ref>  (then re-run create)")
