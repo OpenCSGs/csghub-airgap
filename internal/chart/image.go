@@ -52,7 +52,18 @@ var (
 	}
 )
 
-func Image(spec *is.ChartSpec, runtimeImages []string, opts iu.ExtractOption) error {
+// Image renders the chart, extracts the images it declares, and exports
+// them into the bundle. The main chart images and the user-selected runtime
+// images are exported as separate tars; either can be skipped with
+// skipMain / skipRuntime so `create --skip-images` (or
+// `--skip-runtime-images`) can produce a partial bundle.
+func Image(spec *is.ChartSpec, runtimeImages []string, opts iu.ExtractOption, skipMain, skipRuntime bool) error {
+	// Nothing to export for this chart — avoid even rendering.
+	if skipMain && skipRuntime {
+		log.Debugf("Skipping image export for chart %s (both main and runtime skipped)", spec.ChartName)
+		return nil
+	}
+
 	manifest, err := Template(spec)
 	if err != nil {
 		return err
@@ -104,17 +115,21 @@ func Image(spec *is.ChartSpec, runtimeImages []string, opts iu.ExtractOption) er
 		}
 	}
 
-	imageSpec := &is.ImageSpec{
-		Images:       images,
-		ChartName:    spec.ChartName,
-		ChartVersion: spec.ChartVersion,
+	if !skipMain {
+		imageSpec := &is.ImageSpec{
+			Images:       images,
+			ChartName:    spec.ChartName,
+			ChartVersion: spec.ChartVersion,
+		}
+
+		if err = image.Export(imageSpec); err != nil {
+			return err
+		}
+	} else {
+		log.Debugf("Skipping main image export for chart %s", spec.ChartName)
 	}
 
-	if err = image.Export(imageSpec); err != nil {
-		return err
-	}
-
-	if len(runtimeImages) > 0 {
+	if !skipRuntime && len(runtimeImages) > 0 {
 		imageSpec := &is.ImageSpec{
 			Images:       runtimeImages,
 			ChartName:    fmt.Sprintf("%s-%s", spec.ChartName, "runtime"),

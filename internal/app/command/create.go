@@ -21,97 +21,64 @@ func Create() *cli.Command {
 			&cli.StringFlag{
 				Name:     "output",
 				Aliases:  []string{"o"},
-				Category: ">​Global Settings",
+				Category: ">​Global",
 				Usage:    "Output directory for the bundle",
 				Value:    config.DefaultBaseDir,
 			},
 			&cli.GenericFlag{
 				Name:     "arch",
-				Aliases:  []string{"a"},
-				Category: ">​Global Settings",
+				Category: ">​Global",
 				Usage:    "Target architecture for binaries and container images (e.g. amd64, arm64)",
 				Value:    func() *Architecture { p := Architecture(runtime.GOARCH); return &p }()},
 			&cli.BoolFlag{
 				Name:     "debug",
 				Aliases:  []string{"d"},
-				Category: ">​Global Settings",
+				Category: ">​Global",
 				Usage:    "Enable debug logging",
 			},
 			&cli.BoolFlag{
 				Name:     "proxy",
-				Category: ">​Global Settings",
+				Category: ">​Global",
 				Usage:    "Use ghfast.top proxy prefix for GitHub downloads",
 			},
 			&cli.BoolFlag{
 				Name:     "force-pull",
-				Aliases:  []string{"fp"},
-				Category: ">​Global Settings",
+				Category: ">​Global",
 				Usage:    "Skip local containerd image cache and always re-pull from registry",
 				Value:    false,
 			},
 			&cli.BoolFlag{
 				Name:     "no-pkg-cache",
-				Aliases:  []string{"npc"},
-				Category: ">​Global Settings",
+				Category: ">​Global",
 				Usage:    "Skip cached NVIDIA package directory and always re-download apt/dnf/zypper packages",
 				Value:    false,
 			},
-			&cli.BoolFlag{
-				Name:     "skip-k3s",
-				Category: "> ‌K3s Settings",
-				Usage:    "Skip K3s installation",
-			},
 			&cli.StringSliceFlag{
 				Name:     "k3s-env",
-				Category: "> ‌K3s Settings",
+				Category: "> ‌K3s",
 				Usage:    "Extra environment variables for K3s (KEY=VALUE)",
 			},
 			&cli.StringSliceFlag{
 				Name:     "k3s-arg",
-				Category: "> ‌K3s Settings",
+				Category: "> ‌K3s",
 				Usage:    "Extra CLI arguments for K3s (--k3s-arg=--default-runtime=nvidia)",
 			},
-			&cli.StringFlag{
-				Name:     "csghub-version",
-				Aliases:  []string{"cv"},
-				Category: "> ‍Charts Settings",
-				Usage:    "CSGHub chart version",
+			&cli.StringSliceFlag{
+				Name:     "skip",
+				Category: ">​Global",
+				Usage:    "Skip components: comma-separated chart names (csghub, longhorn, nvdp) and/or kinds (k3s, image, runtime)",
 			},
 			&cli.BoolFlag{
-				Name:     "csghub-runtime",
-				Category: "> ‍Charts Settings",
-				Usage:    "Interactively select CSGHub runtime images to include in the bundle",
-				Value:    false,
-			},
-			&cli.StringFlag{
-				Name:     "longhorn-version",
-				Aliases:  []string{"lv"},
-				Category: "> ‍Charts Settings",
-				Usage:    "Longhorn chart version",
-				Value:    "1.11.1",
-			},
-			&cli.BoolFlag{
-				Name:     "skip-longhorn",
-				Category: "> ‍Charts Settings",
-				Usage:    "Skip Longhorn installation",
-			},
-			&cli.StringFlag{
-				Name:     "nvdp-version",
-				Aliases:  []string{"nv"},
-				Category: "> ‍Charts Settings",
-				Usage:    "NVIDIA device plugin version",
-				Value:    "0.19.0",
-			},
-			&cli.BoolFlag{
-				Name:     "skip-nvdp",
-				Usage:    "Skip NVDP installation",
-				Category: "> ‍Charts Settings",
+				Name:     "quiet",
+				Aliases:  []string{"q"},
+				Category: "> Preflight",
+				Usage:    "Skip interactive prompts. When set, runtime image selection is skipped (no images selected)",
 			},
 			// ===== Helm values =====
 			&cli.StringSliceFlag{
 				Name:     "set",
 				Aliases:  []string{"s"},
-				Category: "> ‍Charts Settings",
+				Category: "> Charts",
 				Usage:    "Set Helm values (e.g. csghub.key=value, supports multiple)",
 			},
 		},
@@ -143,8 +110,13 @@ func Create() *cli.Command {
 				return err
 			}
 
-			// Interactive runtime image selection
-			if bs.Runtime {
+			bs.Quiet = c.Bool("quiet")
+
+			// Runtime image selection is on by default and skipped when
+			// --skip runtime (or --skip image, which also sets
+			// SkipRuntimeImages) is in effect, or when --quiet is set —
+			// both mean "don't block on an interactive prompt".
+			if !bs.SkipRuntimeImages && !bs.Quiet {
 				if !c.Bool("debug") {
 					log.Infof("Fetching available runtime images...")
 				}
@@ -159,6 +131,10 @@ func Create() *cli.Command {
 					log.Infof("Selected %d runtime images", len(selected))
 				}
 				bs.SelectedRuntimeImages = selected
+			} else if bs.SkipRuntimeImages {
+				log.Infof("Skipping runtime image selection (--skip runtime/image)")
+			} else {
+				log.Infof("Skipping runtime image selection (--quiet)")
 			}
 
 			// build bundle

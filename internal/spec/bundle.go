@@ -8,9 +8,14 @@ type BundleSpec struct {
 	// Quiet suppresses interactive prompts in `deploy` (e.g. the
 	// multipathd disable question) and auto-applies the safe default.
 	Quiet                   bool        `yaml:"quiet,omitempty"`
+	// SkipImages skips exporting (create) / importing (deploy) the main
+	// chart images. Charts and runtime images still run.
+	SkipImages              bool        `yaml:"skip_images,omitempty"`
+	// SkipRuntimeImages skips exporting (create) / importing (deploy) the
+	// user-selected runtime images. Charts and main images still run.
+	SkipRuntimeImages       bool        `yaml:"skip_runtime_images,omitempty"`
 	Charts                  []ChartSpec `yaml:"charts"`
 	Arch                    string      `yaml:"arch"`
-	Runtime                 bool        `yaml:"runtime"`
 	SelectedRuntimeImages   []string    `yaml:"selected_runtime_images,omitempty"`
 }
 
@@ -30,6 +35,5 @@ func LoadBundleSpec() (*BundleSpec, error) {
 		SkipK3s: false,
 		Charts:  charts,
 		Arch:    runtime.GOARCH,
-		Runtime: false,
 	}, nil
 }

@@ -15,7 +15,13 @@ import (
 func Import(spec *spec.ImageSpec) error {
 	imageFilePath := spec.ImageFilePath()
 	if _, err := os.Stat(imageFilePath); os.IsNotExist(err) {
-		return err
+		return fmt.Errorf("image bundle %s not found: %w\n"+
+			"  The tar file does not exist on this host.\n"+
+			"  If you ran create with --skip image (or --skip image is set in the bundle spec),\n"+
+			"  this image set was intentionally not exported. Either:\n"+
+			"    - re-run deploy without --skip image to import it, or\n"+
+			"    - keep --skip image if the images are already loaded another way",
+			imageFilePath, err)
 	}
 
 	log.Infof("Start images importing %s", imageFilePath)

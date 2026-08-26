@@ -45,15 +45,18 @@ func (s *Spec) Create() error {
 			log.Debugf("Skipping disabled chart %s", c.ChartName)
 			continue
 		}
+
+		// Pull the chart. Skipping a chart is expressed via --skip <name>
+		// which flips c.Enabled=false (handled above), so this chart always
+		// resolves its latest version and pulls.
 		if c.ChartVersion == "" {
 			c.ChartVersion = chart.LatestVersion(&c)
 		}
-
-		log.Debugf("Processing chart %s with version %s", c.ChartName, c.ChartVersion)
-
 		if err := chart.Pull(&c); err != nil {
 			return err
 		}
+
+		log.Debugf("Processing chart %s with version %s", c.ChartName, c.ChartVersion)
 
 		var opt iu.ExtractOption
 		switch c.RepoName {
@@ -68,7 +71,7 @@ func (s *Spec) Create() error {
 		if c.RepoName == "csghub" {
 			runtimeImages = s.SelectedRuntimeImages
 		}
-		if err := chart.Image(&c, runtimeImages, opt); err != nil {
+		if err := chart.Image(&c, runtimeImages, opt, s.SkipImages, s.SkipRuntimeImages); err != nil {
 			return err
 		}
 	}

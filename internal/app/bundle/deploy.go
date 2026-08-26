@@ -29,7 +29,7 @@ func (s *Spec) Deploy() error {
 
 	// Auto-disable nvdp (and the NVIDIA toolkit packages that feed it) when
 	// the host has no NVIDIA GPU. This keeps the default `deploy` behaviour
-	// safe on non-GPU clusters even though --skip-nvdp now defaults to
+	// safe on non-GPU clusters even though --skip nvdp now defaults to
 	// false (i.e. "install"). Users who want to force-install anyway can
 	// re-enable nvdp.Enabled in the bundle's metadata.yaml by hand.
 	if !os.HasNVIDIAGPU() {
@@ -69,16 +69,24 @@ func (s *Spec) Deploy() error {
 			log.Debugf("Skipping disabled chart %s", c.ChartName)
 			continue
 		}
-		imageSpec := &spec.ImageSpec{
-			Images:       nil,
-			ChartName:    c.ChartName,
-			ChartVersion: c.ChartVersion,
-		}
-		if err := image.Import(imageSpec); err != nil {
-			return err
+
+		// Main chart images: skip when --skip image.
+		if !s.SkipImages {
+			imageSpec := &spec.ImageSpec{
+				Images:       nil,
+				ChartName:    c.ChartName,
+				ChartVersion: c.ChartVersion,
+			}
+			if err := image.Import(imageSpec); err != nil {
+				return err
+			}
+		} else {
+			log.Debugf("Skipping main image import for %s (--skip image)", c.ChartName)
 		}
 
-		if s.Runtime {
+		// Runtime images: only the csghub chart has them, and only when the
+		// user selected at least one at create time. Skip when --skip runtime.
+		if !s.SkipRuntimeImages && c.RepoName == "csghub" && len(s.SelectedRuntimeImages) > 0 {
 			imageSpec := &spec.ImageSpec{
 				Images:       nil,
 				ChartName:    fmt.Sprintf("%s-%s", c.ChartName, "runtime"),
@@ -87,6 +95,8 @@ func (s *Spec) Deploy() error {
 			if err := image.Import(imageSpec); err != nil {
 				return err
 			}
+		} else {
+			log.Debugf("Skipping runtime image import for %s (--skip runtime or no runtime images selected)", c.ChartName)
 		}
 
 		if chart.List(&c) {
@@ -130,9 +140,9 @@ func (s *Spec) Deploy() error {
 
 // nvdpEnabled returns true if the nvdp chart (nvidia-device-plugin) is set
 // to install in this bundle. Used to gate NVIDIA toolkit package download
-// and install: when --skip-nvdp is in effect (default for `deploy`) the
-// package operations are skipped too, since the toolkit libraries have no
-// consumer.
+// and install: when the nvdp chart is disabled (via --skip nvdp or because
+// no GPU was detected) the package operations are skipped too, since the
+// toolkit libraries have no consumer.
 func nvdpEnabled(charts []spec.ChartSpec) bool {
 	for _, c := range charts {
 		if c.ChartName == "nvidia-device-plugin" {

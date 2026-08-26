@@ -8,7 +8,7 @@ repo_name: nvdp
 repo_url: https://charts.opencsg.com/k8s-device-plugin/
 
 chart_name: nvidia-device-plugin
-chart_version: ""
+chart_version: "0.19.0"
 
 values:
   nfd:
