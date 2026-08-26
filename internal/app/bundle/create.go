@@ -21,10 +21,15 @@ func (s *Spec) Create() error {
 	}
 
 	if s.Arch == runtime.GOARCH {
-		if !nvdpEnabled(s.Charts) {
+		switch {
+		case s.SkipPkg:
+			log.Infof("Skipping NVIDIA toolkit package download (--skip package)")
+		case !nvdpEnabled(s.Charts):
 			log.Infof("Skipping NVIDIA toolkit package download (nvdp chart disabled)")
-		} else if err := pkg.Download(config.DefaultBaseDir); err != nil {
-			return err
+		default:
+			if err := pkg.Download(config.DefaultBaseDir); err != nil {
+				return err
+			}
 		}
 	} else {
 		log.Warnf("Skipping package download: cross-architecture download is not supported (target=%s, host=%s)", s.Arch, runtime.GOARCH)

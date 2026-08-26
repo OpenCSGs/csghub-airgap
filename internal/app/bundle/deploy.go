@@ -41,10 +41,15 @@ func (s *Spec) Deploy() error {
 		}
 	}
 
-	if !nvdpEnabled(s.Charts) {
+	switch {
+	case s.SkipPkg:
+		log.Infof("Skipping NVIDIA toolkit package install (--skip package)")
+	case !nvdpEnabled(s.Charts):
 		log.Infof("Skipping NVIDIA toolkit package install (nvdp chart disabled)")
-	} else if err := pkg.InstallFrom(config.DefaultBaseDir); err != nil {
-		return err
+	default:
+		if err := pkg.InstallFrom(config.DefaultBaseDir); err != nil {
+			return err
+		}
 	}
 
 	if err := kernel.SetParams(nil); err != nil {

@@ -22,6 +22,7 @@ func NewFromSpec(bs *spec.BundleSpec) *Spec {
 		Quiet:                 bs.Quiet,
 		SkipImages:            bs.SkipImages,
 		SkipRuntimeImages:     bs.SkipRuntimeImages,
+		SkipPkg:               bs.SkipPkg,
 		SelectedRuntimeImages: bs.SelectedRuntimeImages,
 		// Sort by weight in descending order, with higher weights listed first.
 		Charts: func(charts []spec.ChartSpec) []spec.ChartSpec {

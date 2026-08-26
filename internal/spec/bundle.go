@@ -14,6 +14,10 @@ type BundleSpec struct {
 	// SkipRuntimeImages skips exporting (create) / importing (deploy) the
 	// user-selected runtime images. Charts and main images still run.
 	SkipRuntimeImages       bool        `yaml:"skip_runtime_images,omitempty"`
+	// SkipPkg skips the NVIDIA container toolkit package download (create)
+	// and install (deploy), independent of the nvdp chart state. It bypasses
+	// the package download, its cache validation, and the install step.
+	SkipPkg                 bool        `yaml:"skip_pkg,omitempty"`
 	Charts                  []ChartSpec `yaml:"charts"`
 	Arch                    string      `yaml:"arch"`
 	SelectedRuntimeImages   []string    `yaml:"selected_runtime_images,omitempty"`
