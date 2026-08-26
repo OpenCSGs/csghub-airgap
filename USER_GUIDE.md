@@ -169,7 +169,7 @@ sudo csghub-airgap deploy [options]
 | `--k3s-env`         |      | 传给 K3s 的额外环境变量（`KEY=VALUE`，可多次）                        | `[]`                     |
 | `--k3s-arg`         |      | 传给 K3s 的额外启动参数                                              | `[]`                     |
 | `--data`            | `-D` | K3s 与 Longhorn 的数据目录                                            | 系统默认                 |
-| `--csghub-domain`   | `-cd`| CSGHub 访问域名                                                      | `csghub.example.com`     |
+| `--domain`          |      | CSGHub 访问域名                                                      | `csghub.example.com`     |
 | `--quiet`           | `-q` | 跳过交互式提示；设置后 multipathd 被自动停止并禁用（不再询问）           | `false`                  |
 | `--skip`            |      | 同 `create`：`k3s`、`charts`、`image`、`runtime`、`package`、`tar` 及图表名    |                          |
 | `--set`             | `-s` | 设置 Helm values（如 `csghub.key=value`，可多次）                     | `[]`                     |
@@ -197,7 +197,7 @@ sudo csghub-airgap deploy --input /opt/csghub-bundle
 # 指定域名与数据目录
 sudo csghub-airgap deploy \
   --input /opt/csghub-bundle \
-  --csghub-domain csghub.mycompany.com \
+  --domain csghub.mycompany.com \
   --data /mnt/data
 
 # 静默部署（自动禁用 multipathd，不交互）
@@ -357,7 +357,7 @@ scp /opt/csghub-bundle.tar user@airgap-host:/root/
 # 3) 离线机器上部署（自动解包）
 sudo csghub-airgap deploy \
   --input /opt/csghub-bundle.tar \
-  --csghub-domain csghub.internal.company.com
+  --domain csghub.internal.company.com
 ```
 
 ### 场景二：GPU 环境
@@ -369,7 +369,7 @@ sudo csghub-airgap create --output /opt/csghub-gpu
 # 部署（本机检测到 GPU 时自动安装 nvdp；无 GPU 时自动禁用）
 sudo csghub-airgap deploy \
   --input /opt/csghub-gpu \
-  --csghub-domain csghub.gpu.company.com
+  --domain csghub.gpu.company.com
 ```
 
 ### 场景三：仅导出/导入镜像（复用已有 K3s）
@@ -386,7 +386,7 @@ sudo csghub-airgap deploy --input /opt/csghub-img --skip k3s,charts
 
 ```bash
 sudo csghub-airgap cleanup --yes
-sudo csghub-airgap deploy --input /opt/csghub-bundle --csghub-domain csghub.company.com
+sudo csghub-airgap deploy --input /opt/csghub-bundle --domain csghub.company.com
 ```
 
 ---

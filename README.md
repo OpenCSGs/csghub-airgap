@@ -178,7 +178,7 @@ sudo csghub-airgap deploy [options]
 | `--k3s-env`       |       | Extra environment variables for K3s (KEY=VALUE)             | `[]`                     |
 | `--k3s-arg`       |       | Extra CLI arguments for K3s                                 | `[]`                     |
 | `--data`          | `-D`  | Specify data directory for K3s and Longhorn                 | (system default)         |
-| `--csghub-domain` | `-cd` | Specify CSGHub domain                                       | `csghub.example.com`     |
+| `--domain`         |       | Specify CSGHub domain                                       | `csghub.example.com`     |
 | `--skip-longhorn` |       | Skip Longhorn installation                                  | `false`                  |
 | `--skip-nvdp`     |       | Skip NVDP installation                                      | `true`                   |
 | `--set`           | `-s`  | Set Helm values (e.g., csghub.key=value, supports multiple) |                          |
@@ -192,7 +192,7 @@ sudo csghub-airgap deploy --input /opt/csghub-bundle
 # Deploy with custom domain and data directory
 sudo csghub-airgap deploy \
   --input /opt/csghub-bundle \
-  --csghub-domain csghub.mycompany.com \
+  --domain csghub.mycompany.com \
   --data /mnt/data  ## both for k3s and longhorn volumes
 
 # Skip Longhorn deployment
@@ -314,7 +314,7 @@ scp ./csghub-airgap-2026-04-01 user@airgap-machine:/root/
 ```shell
 # Deploy CSGHub
 sudo csghub-airgap deploy \
-  --csghub-domain csghub.internal.company.com
+  --domain csghub.internal.company.com
 ```
 
 ### Example 2: Production Deployment with Custom Storage
@@ -335,7 +335,7 @@ sudo csghub-airgap create \
 ```shell
 sudo csghub-airgap deploy \
   --input /opt/csghub-prod-bundle \
-  --csghub-domain csghub.prod.company.com \
+  --domain csghub.prod.company.com \
   --data /data
 ```
 
@@ -355,7 +355,7 @@ sudo csghub-airgap create \
 ```shell
 sudo csghub-airgap deploy \
   --input /opt/csghub-gpu-bundle \
-  --csghub-domain csghub.gpu.company.com \
+  --domain csghub.gpu.company.com \
   --skip-nvdp=false
 ```
 
@@ -378,7 +378,7 @@ sudo csghub-airgap create \
 sudo csghub-airgap deploy \
   --input /opt/csghub-minimal-bundle \
   --skip-longhorn \
-  --csghub-domain csghub.minimal.company.com
+  --domain csghub.minimal.company.com
 ```
 
 ### Example 5: Cleanup and Re-deployment
@@ -390,7 +390,7 @@ sudo csghub-airgap cleanup --yes
 # Deploy fresh
 sudo csghub-airgap deploy \
   --input /opt/csghub-prod-bundle \
-  --csghub-domain csghub.company.com
+  --domain csghub.company.com
 ```
 
 ## Troubleshooting

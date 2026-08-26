@@ -178,7 +178,7 @@ sudo csghub-airgap deploy [options]
 | `--k3s-env`       |        | 为 K3s 设置额外的环境变量（KEY=VALUE）     | `[]`                      |
 | `--k3s-arg`       |        | 为 K3s 设置额外的 CLI 参数                 | `[]`                      |
 | `--data`          | `-D`   | 为 K3s 和 Longhorn 指定数据目录            | （系统默认）              |
-| `--csghub-domain` | `-cd`  | 指定 CSGHub 域名                           | `csghub.example.com`      |
+| `--domain`         |        | 指定 CSGHub 域名                           | `csghub.example.com`      |
 | `--skip-longhorn` |        | 跳过 Longhorn 安装                         | `false`                   |
 | `--skip-nvdp`     |        | 跳过 NVDP 安装                             | `true`                    |
 | `--set`           | `-s`   | 设置 Helm 值（例如 csghub.key=value，可多次指定） |                       |
@@ -192,7 +192,7 @@ sudo csghub-airgap deploy --input /opt/csghub-bundle
 # 使用自定义域名和数据目录部署
 sudo csghub-airgap deploy \
   --input /opt/csghub-bundle \
-  --csghub-domain csghub.mycompany.com \
+  --domain csghub.mycompany.com \
   --data /mnt/data  ## 同时用于 k3s 和 longhorn 卷
 
 # 跳过 Longhorn 部署
@@ -314,7 +314,7 @@ scp ./csghub-airgap-2026-04-01 user@airgap-machine:/root/
 ```shell
 # 部署 CSGHub
 sudo csghub-airgap deploy \
-  --csghub-domain csghub.internal.company.com
+  --domain csghub.internal.company.com
 ```
 
 ### 示例 2：生产环境部署（自定义存储）
@@ -335,7 +335,7 @@ sudo csghub-airgap create \
 ```shell
 sudo csghub-airgap deploy \
   --input /opt/csghub-prod-bundle \
-  --csghub-domain csghub.prod.company.com \
+  --domain csghub.prod.company.com \
   --data /data
 ```
 
@@ -355,7 +355,7 @@ sudo csghub-airgap create \
 ```shell
 sudo csghub-airgap deploy \
   --input /opt/csghub-gpu-bundle \
-  --csghub-domain csghub.gpu.company.com \
+  --domain csghub.gpu.company.com \
   --skip-nvdp=false
 ```
 
@@ -378,7 +378,7 @@ sudo csghub-airgap create \
 sudo csghub-airgap deploy \
   --input /opt/csghub-minimal-bundle \
   --skip-longhorn \
-  --csghub-domain csghub.minimal.company.com
+  --domain csghub.minimal.company.com
 ```
 
 ### 示例 5：清理并重新部署
@@ -390,7 +390,7 @@ sudo csghub-airgap cleanup --yes
 # 重新部署
 sudo csghub-airgap deploy \
   --input /opt/csghub-prod-bundle \
-  --csghub-domain csghub.company.com
+  --domain csghub.company.com
 ```
 
 ## 故障排除

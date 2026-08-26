@@ -111,7 +111,7 @@ func ApplyOverrides(b *spec.BundleSpec, c *cli.Context) error {
 	}
 
 	data := c.String("data")
-	domain := c.String("csghub-domain")
+	domain := c.String("domain")
 
 	if data != "" {
 		b.K3s.InstallArgs["--data-dir"] = filepath.Join(data, "k3s")

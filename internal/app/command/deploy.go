@@ -56,8 +56,7 @@ func Deploy() *cli.Command {
 				Usage:    "Specify data directory for K3s and Longhorn",
 			},
 			&cli.StringFlag{
-				Name:     "csghub-domain",
-				Aliases:  []string{"cd"},
+				Name:     "domain",
 				Category: "> Charts",
 				Usage:    "Specify csghub domain",
 				Value:    "csghub.example.com",
