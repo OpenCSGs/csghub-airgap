@@ -37,7 +37,7 @@ sudo csghub-airgap create [options]
 | `--no-pkg-cache` |      | 跳过 NVIDIA 软件包缓存目录，始终重新下载 apt/dnf/zypper 软件包             | `false`                     |
 | `--k3s-env`      |      | 传给 K3s 的额外环境变量（`KEY=VALUE`，可多次）                            | `[]`                        |
 | `--k3s-arg`      |      | 传给 K3s 的额外启动参数（如 `--k3s-arg=--default-runtime=nvidia`）        | `[]`                        |
-| `--skip`         |      | 跳过组件：图表名（`csghub`、`longhorn`、`nvdp`）和/或类别（`k3s`、`charts`、`image`、`runtime`、`package`），逗号分隔、可多次 |             |
+| `--skip`         |      | 跳过组件：图表名（`csghub`、`longhorn`、`nvdp`）和/或类别（`k3s`、`charts`、`image`、`runtime`、`package`、`tar`），逗号分隔、可多次 |             |
 | `--quiet`        | `-q` | 跳过交互式提示；设置后 runtime 镜像选择被跳过（不选择任何 runtime 镜像）      | `false`                     |
 | `--set`          | `-s` | 设置 Helm values（如 `csghub.key=value`，可多次）                         | `[]`                        |
 
@@ -51,6 +51,7 @@ sudo csghub-airgap create [options]
    - 导出该图表的主镜像（除非 `--skip image`）。
    - 若为 `csghub` 图表：弹出 runtime 镜像选择界面，确认后再导出选中的 runtime 镜像（除非 `--skip runtime`/`--skip image` 或 `--quiet`）。
 5. **生成 `metadata.yaml`**，记录本次打包的配置。
+6. **打包**：把整个输出目录打成 `<目录名>.tar`（除非 `--skip tar`）。
 
 > **runtime 镜像选择时机**：runtime 镜像的选择和导出在 csghub 主镜像导出完成之后进行，而不是程序启动时。
 
@@ -91,6 +92,9 @@ sudo csghub-airgap create --skip runtime
 # 只导出镜像，跳过 k3s / 图表 / 软件包（image-only 模式，会弹出主镜像选择界面）
 sudo csghub-airgap create --skip k3s,charts,package
 
+# 不打包成 tar，保留纯目录（配合部署时 --skip tar）
+sudo csghub-airgap create --skip tar
+
 # 跳过指定图表（csghub、longhorn、nvdp）
 sudo csghub-airgap create --skip longhorn
 sudo csghub-airgap create --skip longhorn,nvdp
@@ -111,6 +115,8 @@ sudo csghub-airgap create \
 ```
 
 ### 离线包目录结构
+
+`create` 完成后，除下面的目录外，还会在**同级**生成 `csghub-airgap-<日期>.tar`，即整个目录的打包文件，方便拷贝传输。`deploy` 时可直接把 `--input` 指向该文件，会自动解包；或指向已解包的目录（配合 `--skip tar`）。
 
 ```
 csghub-airgap-<日期>/
@@ -165,7 +171,7 @@ sudo csghub-airgap deploy [options]
 | `--data`            | `-D` | K3s 与 Longhorn 的数据目录                                            | 系统默认                 |
 | `--csghub-domain`   | `-cd`| CSGHub 访问域名                                                      | `csghub.example.com`     |
 | `--quiet`           | `-q` | 跳过交互式提示；设置后 multipathd 被自动停止并禁用（不再询问）           | `false`                  |
-| `--skip`            |      | 同 `create`：`k3s`、`charts`、`image`、`runtime`、`package` 及图表名    |                          |
+| `--skip`            |      | 同 `create`：`k3s`、`charts`、`image`、`runtime`、`package`、`tar` 及图表名    |                          |
 | `--set`             | `-s` | 设置 Helm values（如 `csghub.key=value`，可多次）                     | `[]`                     |
 
 ### 执行流程与预检
@@ -315,6 +321,7 @@ csghub-airgap list-images --category notebook --format json
 | `image`   | 跳过所有镜像导出（主镜像 + runtime 镜像）         | 跳过所有镜像导入（主镜像 + runtime 镜像）      |
 | `runtime` | 仅跳过 runtime 镜像导出                          | 仅跳过 runtime 镜像导入                       |
 | `package` | 跳过 NVIDIA 软件包下载                          | 跳过 NVIDIA 软件包安装                       |
+| `tar`     | 跳过打包：不生成 `.tar`，保留纯目录            | 跳过解包：`--input` 需指向已解包的目录         |
 
 **图表名**
 
@@ -341,15 +348,15 @@ sudo csghub-airgap create --skip k3s,charts,package --quiet
 ### 场景一：基本离线部署
 
 ```bash
-# 1) 有网机器上打包
+# 1) 有网机器上打包（生成 /opt/csghub-bundle.tar）
 sudo csghub-airgap create --output /opt/csghub-bundle
 
-# 2) 拷贝离线包到离线机器（U 盘 / scp 等）
-scp -r /opt/csghub-bundle user@airgap-host:/root/
+# 2) 拷贝打包文件到离线机器（U 盘 / scp 等）
+scp /opt/csghub-bundle.tar user@airgap-host:/root/
 
-# 3) 离线机器上部署
+# 3) 离线机器上部署（自动解包）
 sudo csghub-airgap deploy \
-  --input /opt/csghub-bundle \
+  --input /opt/csghub-bundle.tar \
   --csghub-domain csghub.internal.company.com
 ```
 

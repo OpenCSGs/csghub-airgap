@@ -68,7 +68,7 @@ func newMainImageModel(chartName string, refs []string, width, height int) image
 
 	d := mainItemDelegate{}
 	l := list.New(items, d, width, height)
-	l.Title = fmt.Sprintf("Select %s main images (space=toggle, a=select all, A=deselect all, enter=confirm)", chartName)
+	l.Title = fmt.Sprintf("Select %s main images (space=toggle, a=all, A=none, enter=confirm, empty=skip)", chartName)
 	l.SetShowStatusBar(false)
 	l.SetShowHelp(true)
 	l.SetFilteringEnabled(false)

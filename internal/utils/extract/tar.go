@@ -10,10 +10,10 @@ import (
 	"strings"
 )
 
-// UnTarGz extracts a tar or tar.gz archive to the destination directory.
+// Untar extracts a tar or tar.gz archive to the destination directory.
 // Auto-detects if the archive is compressed with gzip.
-func UnTarGz(tarGzPath, destDir string) error {
-	file, err := os.Open(tarGzPath)
+func Untar(tarPath, destDir string) error {
+	file, err := os.Open(tarPath)
 	if err != nil {
 		return fmt.Errorf("failed to open archive: %v", err)
 	}
@@ -25,7 +25,7 @@ func UnTarGz(tarGzPath, destDir string) error {
 		return fmt.Errorf("failed to detect compression: %v", err)
 	}
 
-	return UnTar(reader, destDir)
+	return untar(reader, destDir)
 }
 
 // autoDetectGzipReader returns an appropriate reader:
@@ -45,8 +45,75 @@ func autoDetectGzipReader(file *os.File) (io.Reader, error) {
 	return file, nil
 }
 
-// UnTar extracts a tar archive from the given reader into destDir
-func UnTar(trReader io.Reader, destDir string) error {
+// Tar archives srcDir into a plain (uncompressed) tar at destPath. The top-level
+// directory name is preserved inside the archive, so extracting restores a
+// directory named after srcDir. destPath itself is excluded from the archive so
+// re-packing a bundle whose archive lives next to (or inside) it stays safe.
+func Tar(srcDir, destPath string) error {
+	out, err := os.Create(destPath)
+	if err != nil {
+		return fmt.Errorf("failed to create archive %s: %v", destPath, err)
+	}
+
+	tw := tar.NewWriter(out)
+
+	base := filepath.Base(filepath.Clean(srcDir))
+	destAbs, _ := filepath.Abs(destPath)
+
+	err = filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Never archive the output file itself (defensive; destPath normally
+		// lives in the parent of srcDir).
+		if abs, _ := filepath.Abs(path); abs == destAbs {
+			return nil
+		}
+
+		rel, err := filepath.Rel(srcDir, path)
+		if err != nil {
+			return err
+		}
+
+		hdr, err := tar.FileInfoHeader(info, "")
+		if err != nil {
+			return err
+		}
+		hdr.Name = filepath.Join(base, rel)
+		if err := tw.WriteHeader(hdr); err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		f, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		_, copyErr := io.Copy(tw, f)
+		closeErr := f.Close()
+		if copyErr != nil {
+			return copyErr
+		}
+		return closeErr
+	})
+	if err != nil {
+		out.Close()
+		return err
+	}
+
+	if err := tw.Close(); err != nil {
+		out.Close()
+		return err
+	}
+	return out.Close()
+}
+
+// untar extracts a tar archive from the given reader into destDir
+func untar(trReader io.Reader, destDir string) error {
 	tr := tar.NewReader(trReader)
 
 	for {

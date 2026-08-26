@@ -28,6 +28,7 @@ type skipSet struct {
 	Images        bool
 	RuntimeImages bool
 	Pkg           bool
+	Tar           bool
 	ChartNames    []string
 }
 
@@ -40,6 +41,7 @@ type skipSet struct {
 //	image        skip ALL image pull (main chart images and runtime images)
 //	runtime      skip only the user-selected runtime images
 //	package      skip NVIDIA container toolkit package download/install
+//	tar          skip packing (create) / unpacking (deploy) the bundle tgz
 //	<chart name> skip that specific chart entirely (pull + its images)
 func parseSkips(values []string) skipSet {
 	var sk skipSet
@@ -73,6 +75,8 @@ func parseSkips(values []string) skipSet {
 			sk.RuntimeImages = true
 		case "package":
 			sk.Pkg = true
+		case "tar":
+			sk.Tar = true
 		default:
 			// Treat as a chart name; unmatched names are warned on later.
 			sk.ChartNames = append(sk.ChartNames, t)
@@ -97,6 +101,9 @@ func ApplyOverrides(b *spec.BundleSpec, c *cli.Context) error {
 	}
 	if sk.Pkg {
 		b.SkipPkg = true
+	}
+	if sk.Tar {
+		b.SkipTar = true
 	}
 
 	if b.K3s == nil {

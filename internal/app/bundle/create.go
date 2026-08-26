@@ -11,6 +11,8 @@ import (
 	"csghub-airgap/internal/infra/pkg"
 	"csghub-airgap/internal/k3s"
 	"csghub-airgap/internal/log"
+	"csghub-airgap/internal/utils/extract"
+	"fmt"
 	"os"
 	"runtime"
 	"time"
@@ -135,6 +137,23 @@ func (s *Spec) Create() error {
 
 	if err := metadata.Save(s); err != nil {
 		return err
+	}
+
+	// Pack the whole bundle directory into a tar next to it (unless
+	// --skip tar). deploy automatically unpacks this archive. The source
+	// directory is removed afterwards since its content now lives in the tar;
+	// use --skip tar to keep the plain directory.
+	if !s.SkipTar {
+		dest := config.DefaultBaseDir + ".tar"
+		log.Infof("Packing bundle to %s ...", dest)
+		if err := extract.Tar(config.DefaultBaseDir, dest); err != nil {
+			return err
+		}
+		log.Infof("Bundle packed: %s", dest)
+		log.Infof("Removing bundle directory %s", config.DefaultBaseDir)
+		if err := os.RemoveAll(config.DefaultBaseDir); err != nil {
+			return fmt.Errorf("failed to remove bundle directory %s: %w", config.DefaultBaseDir, err)
+		}
 	}
 
 	log.Infof("Create finished in %s", time.Since(start))

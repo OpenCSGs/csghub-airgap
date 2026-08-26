@@ -6,7 +6,12 @@ import (
 	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/infra/user"
 	"csghub-airgap/internal/log"
+	"csghub-airgap/internal/utils/extract"
+	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/urfave/cli/v2"
 )
@@ -66,7 +71,7 @@ func Deploy() *cli.Command {
 			&cli.StringSliceFlag{
 				Name:     "skip",
 				Category: ">​Global",
-				Usage:    "Skip components: comma-separated chart names (csghub, longhorn, nvdp) and/or kinds (k3s, charts, image, runtime, package)",
+				Usage:    "Skip components: comma-separated chart names (csghub, longhorn, nvdp) and/or kinds (k3s, charts, image, runtime, package, tar)",
 			},
 			&cli.StringSliceFlag{
 				Name:     "set",
@@ -82,6 +87,18 @@ func Deploy() *cli.Command {
 			// init config
 			config.InitBaseDir(c)
 			config.InitProxy(c)
+
+			// If --input points at the bundle archive produced by `create`,
+			// unpack it before loading metadata. Skipped with --skip tar (the
+			// input is then expected to be an already-unpacked directory).
+			if !parseSkips(c.StringSlice("skip")).Tar {
+				if dir, err := maybeUnpackBundle(config.DefaultBaseDir); err != nil {
+					return err
+				} else if dir != "" {
+					log.Infof("Unpacked bundle archive to %s", dir)
+					config.DefaultBaseDir = dir
+				}
+			}
 
 			// Run as user root
 			if err := user.EnsureRoot(); err != nil {
@@ -109,4 +126,24 @@ func Deploy() *cli.Command {
 			return bundle.NewFromSpec(bs).Deploy()
 		},
 	}
+}
+
+// maybeUnpackBundle unpacks a bundle tar when input points at one, returning
+// the path of the unpacked directory. A plain directory (or a path that is not
+// a .tar archive) is returned as "" so the caller keeps using input as-is.
+func maybeUnpackBundle(input string) (string, error) {
+	fi, err := os.Stat(input)
+	if err != nil {
+		return "", nil
+	}
+	if fi.IsDir() || !strings.HasSuffix(input, ".tar") {
+		return "", nil
+	}
+
+	dest := strings.TrimSuffix(input, ".tar")
+	log.Infof("Unpacking bundle archive %s ...", input)
+	if err := extract.Untar(input, filepath.Dir(input)); err != nil {
+		return "", fmt.Errorf("failed to unpack bundle %s: %w", input, err)
+	}
+	return dest, nil
 }

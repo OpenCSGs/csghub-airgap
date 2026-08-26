@@ -54,7 +54,7 @@ func Install(ks *spec.K3sSpec) error {
 				continue
 			}
 
-			if err := extract.UnTarGz(asset.Src, asset.Dest); err != nil {
+			if err := extract.Untar(asset.Src, asset.Dest); err != nil {
 				return err
 			}
 
