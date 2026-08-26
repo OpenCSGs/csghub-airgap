@@ -65,6 +65,20 @@ func Download(destDir string) error {
 		return err
 	}
 
+	// Strict cache check: skip the apt/dnf/zypper dance when the package dir
+	// already contains a complete, intact, dependency-resolving set of
+	// packages. Any validation failure auto-clears the lock file and falls
+	// through to a fresh download.
+	if !NoCache {
+		if ok, reason := validateCache(packageDir); ok {
+			log.Infof("Reusing cached NVIDIA packages (%s), skipping download", reason)
+			return nil
+		} else if reason != "" {
+			log.Warnf("Cached NVIDIA packages invalid (%s), re-downloading", reason)
+			_ = os.Remove(filepath.Join(packageDir, lockFileName))
+		}
+	}
+
 	switch id {
 	case "ubuntu", "debian":
 		if err := shell.Execute("apt-get", "update"); err != nil {
@@ -200,5 +214,29 @@ func Download(destDir string) error {
 		// Unknown distro, no-op
 	}
 
+	// Persist a cache lock so the next `airgap bundle create` can skip this
+	// whole flow when the package set is unchanged.
+	if !NoCache {
+		if err := writeLock(packageDir, id, sourceRepoForDistro(id)); err != nil {
+			log.Warnf("Failed to write package lock file: %v", err)
+		} else {
+			log.Infof("Wrote package cache lock: %s", filepath.Join(packageDir, lockFileName))
+		}
+	}
+
 	return nil
+}
+
+// sourceRepoForDistro returns the upstream repo URL that was used for the
+// given distro, recorded in the lock file so future audits can verify the
+// source of every cached package.
+func sourceRepoForDistro(id string) string {
+	switch id {
+	case "ubuntu", "debian":
+		return DebianRepoURL
+	case "rhel", "centos", "almalinux", "fedora", "opensuse-leap", "sles", "suse":
+		return RpmRepoURL
+	default:
+		return ""
+	}
 }

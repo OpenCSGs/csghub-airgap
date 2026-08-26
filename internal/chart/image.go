@@ -94,6 +94,16 @@ func Image(spec *is.ChartSpec, runtimeImages []string, opts iu.ExtractOption) er
 		}
 	}
 
+	// extra_images declared in the chart manifest are bundled regardless of
+	// repo_name; they cover cases where the chart itself does not render the
+	// image (e.g. runtime-injected sidecars like argoexec).
+	if len(spec.ExtraImages) > 0 {
+		log.Debugf("Including %d extra images from chart manifest", len(spec.ExtraImages))
+		for _, img := range spec.ExtraImages {
+			images = append(images, imageRegComplete(img))
+		}
+	}
+
 	imageSpec := &is.ImageSpec{
 		Images:       images,
 		ChartName:    spec.ChartName,

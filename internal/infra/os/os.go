@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -34,4 +35,24 @@ func GetOSID() (string, error) {
 	}
 
 	return "", fmt.Errorf("could not detect OS ID from /etc/os-release")
+}
+
+// HasNVIDIAGPU reports whether the host appears to have an NVIDIA GPU
+// attached and the kernel driver loaded. Detection is by device file
+// presence (/dev/nvidia0, /dev/nvidia1, ...); this is the same heuristic
+// used by the NVIDIA device plugin to gate its setup.
+//
+// On non-Linux hosts, or when the device directory cannot be read (e.g.
+// running inside an unprivileged container), the function returns false.
+// Callers should treat a false return as "unknown / no GPU" rather than
+// as a hard error.
+func HasNVIDIAGPU() bool {
+	if runtime.GOOS != "linux" {
+		return false
+	}
+	entries, err := filepath.Glob("/dev/nvidia[0-9]*")
+	if err != nil {
+		return false
+	}
+	return len(entries) > 0
 }

@@ -55,6 +55,14 @@ func Export(spec *spec.ImageSpec) error {
 	imgMap := make(map[string]v1.Image)
 	var skippedImages []string
 	var tempTars []string
+	var cacheHits []cacheHitEntry
+
+	// Dump the full image list at debug so an operator can sanity-check what
+	// is about to be pulled (or skipped via cache) before any network I/O.
+	log.Debugf("Exporting %d image(s) for chart %s@%s:", len(spec.Images), spec.ChartName, spec.ChartVersion)
+	for i, imgName := range spec.Images {
+		log.Debugf("  [%d] %s", i, imgName)
+	}
 
 	// Clean up temp tar files after MultiSave (or any early return) reads them.
 	defer func() {
@@ -75,9 +83,14 @@ func Export(spec *spec.ImageSpec) error {
 			if err != nil {
 				log.Warnf("Failed to export local image %s, falling back to remote pull: %v", imgName, err)
 			} else {
+				digest := localImageDigestStr(imgName)
 				localCount++
-				log.Infof("Image exported from local store: %s", imgName)
+				log.Infof("[CACHE] using %s local_digest=%s (skipped remote pull)", imgName, digest)
 				imgMap[imgName] = img
+				cacheHits = append(cacheHits, cacheHitEntry{
+					Image:       imgName,
+					LocalDigest: digest,
+				})
 				if tempTarPath != "" {
 					tempTars = append(tempTars, tempTarPath)
 				}
@@ -91,9 +104,15 @@ func Export(spec *spec.ImageSpec) error {
 			skippedImages = append(skippedImages, imgName)
 			continue
 		}
+		digest := imgDigestStr(img)
 		remoteCount++
+		log.Infof("[REMOTE] pulled %s digest=%s", imgName, digest)
 		imgMap[imgName] = img
 	}
+
+	// Print the cache report before any long-running MultiSave so the operator
+	// can still abort if the report reveals unexpected cached images.
+	printCacheReport(cacheHits)
 
 	// If any images were skipped, write a partial tar with the successful
 	// ones so deploy can still proceed. Mark the tar with a .incomplete flag
@@ -120,7 +139,58 @@ func Export(spec *spec.ImageSpec) error {
 		return fmt.Errorf("error saving images %s: %v", spec.Images, err)
 	}
 
+	if localCount > 0 {
+		log.Infof("Note: %d/%d image(s) used local containerd cache; rerun with --force-pull to refresh.",
+			localCount, len(spec.Images))
+	}
+
 	log.Infof("Exported %d images to %s (elapsed %.3fs)", len(spec.Images), spec.ImageFileName(), time.Since(pullStart).Seconds())
 
 	return nil
+}
+
+// cacheHitEntry records an image that was served from the local containerd
+// cache instead of being pulled fresh from the registry. Reported in the Cache
+// Report at the end of Export.
+type cacheHitEntry struct {
+	Image       string
+	LocalDigest string
+}
+
+// imgDigestStr returns the sha256 digest of a v1.Image as a string, or
+// "<unknown>" if the digest cannot be computed.
+func imgDigestStr(img v1.Image) string {
+	h, err := img.Digest()
+	if err != nil {
+		return "<unknown>"
+	}
+	return h.String()
+}
+
+// printCacheReport emits a human-readable list of every image that Export
+// served from the local containerd cache. No-op when there were no cache hits.
+func printCacheReport(hits []cacheHitEntry) {
+	if len(hits) == 0 {
+		return
+	}
+	fmt.Println()
+	log.Infof("=== Cache Report ===")
+	log.Infof("%d image(s) were served from the local containerd cache (NOT pulled fresh):", len(hits))
+	log.Infof("To force a re-pull from the registry, either:")
+	log.Infof("  - rerun this command with --force-pull / -fp")
+	log.Infof("  - or: ctr -n k8s.io images rm <ref>  (then re-run create)")
+	log.Infof("")
+	nameW := 0
+	for _, h := range hits {
+		if len(h.Image) > nameW {
+			nameW = len(h.Image)
+		}
+	}
+	if nameW > 80 {
+		nameW = 80
+	}
+	for _, h := range hits {
+		log.Infof("  [CACHE] %-*s  local=%s", nameW, h.Image, h.LocalDigest)
+	}
+	fmt.Println()
 }

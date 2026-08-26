@@ -23,6 +23,13 @@ type ChartSpec struct {
 	Values       map[string]interface{} `yaml:"values"`
 	Weight       int                    `yaml:"weight,omitempty"`
 	DependsOn    []string               `yaml:"depends_on,omitempty"`
+	// ExtraImages lists image refs to bundle even though the chart does not
+	// declare them (e.g. runtime-injected sidecars like argo's argoexec
+	// image, which is referenced by workflow-controller at workflow pod
+	// creation time but never appears as a chart-rendered `image:` field).
+	// These go through the same registry-rewrite and cache paths as images
+	// extracted from the chart.
+	ExtraImages []string `yaml:"extra_images,omitempty"`
 }
 
 // NewChartSpec takes a slice of YAML strings representing one or more chart manifests

@@ -27,7 +27,23 @@ func (s *Spec) Deploy() error {
 		return err
 	}
 
-	if err := pkg.InstallFrom(config.DefaultBaseDir); err != nil {
+	// Auto-disable nvdp (and the NVIDIA toolkit packages that feed it) when
+	// the host has no NVIDIA GPU. This keeps the default `deploy` behaviour
+	// safe on non-GPU clusters even though --skip-nvdp now defaults to
+	// false (i.e. "install"). Users who want to force-install anyway can
+	// re-enable nvdp.Enabled in the bundle's metadata.yaml by hand.
+	if !os.HasNVIDIAGPU() {
+		for i := range s.Charts {
+			if s.Charts[i].ChartName == "nvidia-device-plugin" && s.Charts[i].Enabled {
+				log.Warnf("No NVIDIA GPU detected on this host; auto-disabling nvdp chart")
+				s.Charts[i].Enabled = false
+			}
+		}
+	}
+
+	if !nvdpEnabled(s.Charts) {
+		log.Infof("Skipping NVIDIA toolkit package install (nvdp chart disabled)")
+	} else if err := pkg.InstallFrom(config.DefaultBaseDir); err != nil {
 		return err
 	}
 
@@ -39,6 +55,13 @@ func (s *Spec) Deploy() error {
 		if err := k3s.Install(s.K3s); err != nil {
 			return err
 		}
+	}
+
+	// Pre-flight: multipathd interferes with Longhorn's block-device
+	// handling. Stop and disable it (after a y/N prompt unless --quiet is
+	// set) before any csghub chart that pulls in Longhorn gets installed.
+	if err := checkMultipath(s.Quiet); err != nil {
+		return err
 	}
 
 	for _, c := range s.Charts {
@@ -103,4 +126,18 @@ func (s *Spec) Deploy() error {
 	log.Infof("Deploy finished in %s", time.Since(start))
 
 	return nil
+}
+
+// nvdpEnabled returns true if the nvdp chart (nvidia-device-plugin) is set
+// to install in this bundle. Used to gate NVIDIA toolkit package download
+// and install: when --skip-nvdp is in effect (default for `deploy`) the
+// package operations are skipped too, since the toolkit libraries have no
+// consumer.
+func nvdpEnabled(charts []spec.ChartSpec) bool {
+	for _, c := range charts {
+		if c.ChartName == "nvidia-device-plugin" {
+			return c.Enabled
+		}
+	}
+	return false
 }

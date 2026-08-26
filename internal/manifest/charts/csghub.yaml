@@ -46,3 +46,8 @@ values:
       server:
         image:
           registry: quay.io
+
+# Images that the csghub chart does not render but the bundle still needs
+# at deploy time. Keep in sync with chart's argo image versions below.
+extra_images:
+  - "quay.io/argoproj/argoexec:v3.7.11"
