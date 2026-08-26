@@ -1,6 +1,6 @@
 # CSGHub Airgap
 
-A CLI tool for creating and deploying offline bundles for CSGHub in air-gapped environments. This tool runs as a command-line utility and does not require any runtime daemon or background service.
+A CLI tool for creating and deploying offline bundles for CSGHub in air-gapped environments. Run `create` on a machine with internet access to build the bundle, then `deploy` on the offline machine. This tool runs as a command-line utility and does not require any runtime daemon or background service.
 
 ## Features
 
@@ -8,7 +8,8 @@ A CLI tool for creating and deploying offline bundles for CSGHub in air-gapped e
 - **Deploy** CSGHub from offline bundles without internet access
 - **Clean up** K3s and all services when needed
 - **Multi-architecture** support (amd64, arm64)
-- **Configurable** components (Longhorn, NVDP, etc.)
+- **Selective components** with a unified `--skip` flag (charts, images, runtime images, packages, tar, K3s)
+- **Interactive runtime image selection** (TUI) during `create`
 - **List runtime images** with category and compute type filters
 - **No daemon** - Pure CLI tool that runs on demand
 
@@ -74,9 +75,16 @@ Make the binary executable:
 sudo chmod +x ./csghub-airgap-linux-amd64
 ```
 
-### Commands
+## Commands
 
-#### Create Bundle
+| Command        | Description                                            |
+| :------------- | :----------------------------------------------------- |
+| `create`       | Create an offline bundle on an internet-connected machine |
+| `deploy`       | Deploy CSGHub from an offline bundle on an offline machine |
+| `cleanup`      | Remove K3s and all deployed services                   |
+| `list-images`  | List available runtime images before creating a bundle |
+
+### Create Bundle
 
 Create an offline bundle containing all necessary components:
 
@@ -84,140 +92,206 @@ Create an offline bundle containing all necessary components:
 sudo csghub-airgap create [options]
 ```
 
-##### Global Options
+#### Options
 
-| Flag       | Alias | Description                        | Default                            |
-| :--------- | :---- | :--------------------------------- | :--------------------------------- |
-| `--output` | `-o`  | Output directory for the bundle    | `./csghub-airgap-<date>`           |
-| `--arch`   | `-a`  | Target architecture (amd64, arm64) | Depending on the local environment |
-| `--debug`  | `-d`  | Enable debug logging               | `false`                            |
+| Flag              | Alias | Description                                                          | Default                  |
+| :---------------- | :---- | :------------------------------------------------------------------- | :----------------------- |
+| `--output`        | `-o`  | Output directory for the bundle                                      | `./csghub-airgap-<date>` |
+| `--arch`          |       | Target architecture (amd64, arm64)                                   | Current system           |
+| `--debug`         | `-d`  | Enable debug logging                                                 | `false`                  |
+| `--proxy`         |       | Use ghfast.top proxy prefix for GitHub downloads                     | `false`                  |
+| `--force-pull`    |       | Skip the local image cache (containerd cache + file cache) and always re-pull from the registry | `false` |
+| `--no-pkg-cache`  |       | Skip the cached NVIDIA package directory and always re-download apt/dnf/zypper packages | `false` |
+| `--k3s-env`       |       | Extra environment variables for K3s (KEY=VALUE)                      | `[]`                     |
+| `--k3s-arg`       |       | Extra CLI arguments for K3s (e.g., `--k3s-arg=--default-runtime=nvidia`) | `[]`                |
+| `--skip`          |       | Skip components: comma-separated chart names (csghub, longhorn, nvdp) and/or kinds (k3s, charts, image, runtime, package, tar) |   |
+| `--quiet`         | `-q`  | Skip interactive prompts; runtime image selection is skipped (no images selected) | `false` |
+| `--set`           | `-s`  | Set Helm values (e.g., csghub.key=value, supports multiple)          | `[]`                     |
 
-***Notes:** create cross-platform cannot download packages for runtime.*
+#### Execution Flow
 
-***Notes:** Creating a bundle on macOS is supported, but the NVIDIA container toolkit system packages are not downloaded on non-Linux hosts, so they must be fetched manually on a Linux machine. Also, the default `--flannel-iface` is detected from the build machine (e.g. `en0` on macOS); it may differ on the target Linux host and should be overridden with `--k3s-arg` if needed.* 
+1. **Architecture check** - verify the current platform can run (creating on macOS is supported, see notes below).
+2. **NVIDIA package download** - only when the target arch matches the host, the nvdp chart is enabled, and `--skip package` is not set.
+3. **K3s download** - k3s binary, airgap images, install script, helm binary (unless `--skip k3s`).
+4. **Per-chart processing** (each enabled chart):
+   - Pull the Helm chart (unless `--skip charts`; if `--skip charts` but the chart file is missing locally, it is still pulled).
+   - Export the chart's main images (unless `--skip image`).
+   - For the `csghub` chart: show the runtime image selection UI, then export the selected runtime images (unless `--skip runtime`/`--skip image` or `--quiet`).
+5. **Generate `metadata.yaml`** recording the bundle configuration.
+6. **Pack** - pack the whole output directory into `<dirname>.tar` (unless `--skip tar`).
 
-##### K3s Options
+> **Runtime image selection timing**: runtime images are selected and exported after the csghub main image export, not at program start.
 
-| Flag         | Description                                                  | Default |
-| :----------- | :----------------------------------------------------------- | :------ |
-| `--skip-k3s` | Skip K3s installation                                        | `false` |
-| `--k3s-env`  | Extra environment variables for K3s (KEY=VALUE)              | `[]`    |
-| `--k3s-arg`  | Extra CLI arguments for K3s (e.g., --k3s-arg=--default-runtime=nvidia) | `[]`    |
+#### Runtime Image Selection UI
 
-##### Charts Options
+After the csghub main image export, the program reads csghub-server's runtime image config (default from GitHub `main` branch) and shows a TUI for you to select:
 
-| Flag                 | Alias | Description                                                 | Default    |
-| :------------------- | :---- | :---------------------------------------------------------- | :--------- |
-| `--csghub-version`   | `-cv` | CSGHub chart version                                        | (required) |
-| `--csghub-runtime`   |       | Pull CSGHub runtime images                                  | `false`    |
-| `--longhorn-version` | `-lv` | Longhorn chart version                                      | `1.11.1`   |
-| `--skip-longhorn`    |       | Skip Longhorn installation                                  | `false`    |
-| `--nvdp-version`     | `-nv` | NVIDIA device plugin version                                | `0.19.0`   |
-| `--skip-nvdp`        |       | Skip NVDP installation                                      | `false`    |
-| `--set`              | `-s`  | Set Helm values (e.g., csghub.key=value, supports multiple) | `[]`       |
-
-##### Examples
-
-```shell
-# Basic bundle creation
-sudo csghub-airgap create
-
-# Create bundle for ARM64 with specific versions
-sudo csghub-airgap create \
-  --arch arm64 \
-  --output /opt/csghub-bundle \
-  --csghub-version 1.17.0 \
-  --longhorn-version 1.11.0
-
-# Skip Longhorn and NVDP
-sudo csghub-airgap create \
-  --skip-longhorn \
-  --skip-nvdp \
-  --output /tmp/bundle \
-  --csghub-version 2.0.0
-
-# Set custom Helm values
-sudo csghub-airgap create \
-  --csghub-version 2.0.0 \
-  --set csghub.global.gateway.external.domain=csghub.example.io \
-  --set longhorn.csi.replicaCount=3
-
-# Include CSGHub runtime image
-sudo csghub-airgap create \
-  --csghub-runtime
-
-# Add K3s custom arguments
-sudo csghub-airgap create \
-  --csghub-version 2.0.0 \
-  --k3s-arg "--disable=traefik"
-
-# Add K3s environment variables
-sudo csghub-airgap create \
-  --csghub-version 2.0.0 \
-  --k3s-env "K3S_TOKEN=mysecrettoken" \
-  --k3s-env "K3S_DATASTORE_ENDPOINT=mysql://..."
+```
+Select runtime images (space=toggle, a=all, A=none, enter=confirm, empty=skip)
 ```
 
-***Notes:** You can view the default parameter settings in csghub-aigap-\<date>/metadata.yaml. These parameters will be applied automatically during deployment unless you manually specify to override them.* 
+- `space` toggle the current item
+- `a` select all
+- `A` select none
+- `enter` confirm (selecting nothing = skip, i.e. no runtime images bundled)
+- `q` / `Esc` cancel (also skips runtime images)
 
-#### Deploy Bundle
+#### Examples
 
-Deploy CSGHub from an offline bundle:
+```shell
+# Basic bundle creation (interactive runtime image selection)
+sudo csghub-airgap create
+
+# Specify output directory and use proxy
+sudo csghub-airgap create \
+  --output /opt/csghub-bundle \
+  --proxy
+
+# Create an arm64 bundle
+sudo csghub-airgap create --arch arm64
+
+# No runtime image selection (non-interactive)
+sudo csghub-airgap create --quiet
+
+# Skip runtime images entirely
+sudo csghub-airgap create --skip runtime
+
+# Image-only mode: skip k3s / charts / packages (shows the main image selection UI)
+sudo csghub-airgap create --skip k3s,charts,package
+
+# Keep the plain directory (no .tar), useful with deploy --skip tar
+sudo csghub-airgap create --skip tar
+
+# Skip specific charts
+sudo csghub-airgap create --skip longhorn
+sudo csghub-airgap create --skip longhorn,nvdp
+
+# Force re-pull all images (ignore local cache)
+sudo csghub-airgap create --force-pull
+
+# Custom Helm values and K3s args
+sudo csghub-airgap create \
+  --set csghub.global.gateway.external.domain=csghub.mycompany.com \
+  --set longhorn.persistence.defaultClassReplicaCount=3 \
+  --k3s-arg "--disable=servicelb"
+
+# Extra K3s environment variables
+sudo csghub-airgap create \
+  --k3s-env "K3S_NODE_NAME=server01" \
+  --k3s-env "K3S_TOKEN=mysecrettoken"
+```
+
+#### Bundle Directory Structure
+
+After `create` finishes, besides the directory below, a `csghub-airgap-<date>.tar` archive of the whole directory is generated next to it for easy transfer. During `deploy` you can point `--input` at the archive (auto-unpacked) or at an already-unpacked directory (with `--skip tar`).
+
+```
+csghub-airgap-<date>/
+├── metadata.yaml                  # bundle config (auto-applied at deploy)
+├── k3s/
+│   ├── bin/k3s
+│   ├── images/k3s-airgap-images-<arch>.tar.zst
+│   ├── scripts/k3s-install.sh
+│   ├── scripts/k3s-patch.sh
+│   └── helm/helm-v3.20.1-linux-<arch>.tar.gz
+├── packages/                      # NVIDIA container toolkit packages (Linux only)
+├── csghub/
+│   ├── charts/csghub-<version>.tgz
+│   └── images/csghub-<version>.tar
+├── csghub-runtime/                # only when runtime images were selected
+│   └── images/csghub-runtime-<version>.tar
+├── longhorn/
+│   ├── charts/longhorn-<version>.tgz
+│   └── images/longhorn-<version>.tar
+└── nvidia-device-plugin/
+    ├── charts/nvidia-device-plugin-<version>.tgz
+    └── images/nvidia-device-plugin-<version>.tar
+```
+
+#### Notes
+
+- **Cross-architecture**: NVIDIA packages are not downloaded when the target arch differs from the host; fetch them manually on a Linux machine (e.g. `apt/dnf/zypper install nvidia-container-toolkit=...`).
+- **Creating on macOS**: supported, but NVIDIA packages cannot be downloaded on non-Linux hosts; handle them manually.
+- **`--flannel-iface`**: detected from the build machine (e.g. `en0` on macOS); if not overridden with `--k3s-arg` at deploy time, it is replaced with the target machine's default NIC.
+
+### Deploy Bundle
+
+Deploy CSGHub from an offline bundle (requires root):
 
 ```shell
 sudo csghub-airgap deploy [options]
 ```
 
-##### Options
+#### Options
 
-| Flag              | Alias | Description                                                 | Default                  |
-| :---------------- | :---- | :---------------------------------------------------------- | :----------------------- |
-| `--input`         | `-i`  | Input bundle directory                                      | `./csghub-airgap-<date>` |
-| `--debug`         | `-d`  | Enable debug logging                                        | `false`                  |
-| `--skip-k3s`      |       | Skip K3s installation                                       | `false`                  |
-| `--k3s-env`       |       | Extra environment variables for K3s (KEY=VALUE)             | `[]`                     |
-| `--k3s-arg`       |       | Extra CLI arguments for K3s                                 | `[]`                     |
-| `--data`          | `-D`  | Specify data directory for K3s and Longhorn                 | (system default)         |
-| `--domain`         |       | Specify CSGHub domain                                       | `csghub.example.com`     |
-| `--skip-longhorn` |       | Skip Longhorn installation                                  | `false`                  |
-| `--skip-nvdp`     |       | Skip NVDP installation                                      | `true`                   |
-| `--set`           | `-s`  | Set Helm values (e.g., csghub.key=value, supports multiple) |                          |
+| Flag              | Alias | Description                                                | Default                  |
+| :---------------- | :---- | :--------------------------------------------------------- | :----------------------- |
+| `--input`         | `-i`  | Input bundle directory (or the `.tar` archive)             | `./csghub-airgap-<date>` |
+| `--debug`         | `-d`  | Enable debug logging                                       | `false`                  |
+| `--proxy`         |       | Use ghfast.top proxy prefix for GitHub downloads           | `false`                  |
+| `--k3s-env`       |       | Extra environment variables for K3s (KEY=VALUE)            | `[]`                     |
+| `--k3s-arg`       |       | Extra CLI arguments for K3s                                | `[]`                     |
+| `--data`          | `-D`  | Specify data directory for K3s and Longhorn                | (system default)         |
+| `--domain`        |       | Specify CSGHub domain                                      | `csghub.example.com`     |
+| `--quiet`         | `-q`  | Skip interactive prompts; multipathd is auto-disabled (no prompt) | `false`          |
+| `--skip`          |       | Same as `create`: `k3s`, `charts`, `image`, `runtime`, `package`, `tar` and chart names |   |
+| `--set`           | `-s`  | Set Helm values (e.g., csghub.key=value, supports multiple) | `[]`                   |
 
-##### Examples
+#### Execution Flow and Preflight
+
+1. **System check** - must be Linux; the bundle architecture must match the target machine.
+2. **NVIDIA GPU detection** - auto-disable the nvdp chart (and package install) when the host has no NVIDIA GPU.
+3. **NVIDIA package install** - when nvdp is enabled and `--skip package` is not set.
+4. **Kernel parameters** - write required sysctl parameters.
+5. **K3s install** - install k3s (unless `--skip k3s`).
+6. **multipathd preflight** - when multipathd is running, prompt to stop and disable it (auto under `--quiet`). Longhorn conflicts with multipath and may hang PVC mounting.
+7. **Per-chart deploy** (each enabled chart):
+   - Import main images into containerd (unless `--skip image`).
+   - For the `csghub` chart: import runtime images (unless `--skip runtime`; only when runtime images were selected at create time).
+   - Install or upgrade the chart (unless `--skip charts`).
+8. **K3s patch** - apply the domain and other config.
+
+#### Examples
 
 ```shell
 # Basic deployment
 sudo csghub-airgap deploy --input /opt/csghub-bundle
 
-# Deploy with custom domain and data directory
+# Specify domain and data directory
 sudo csghub-airgap deploy \
   --input /opt/csghub-bundle \
   --domain csghub.mycompany.com \
-  --data /mnt/data  ## both for k3s and longhorn volumes
+  --data /mnt/data
 
-# Skip Longhorn deployment
-sudo csghub-airgap deploy \
-  --input /opt/csghub-bundle \
-  --skip-longhorn
+# Non-interactive deploy (auto-disables multipathd)
+sudo csghub-airgap deploy --input /opt/csghub-bundle --quiet
 
-# Enable NVDP (disabled by default)
-sudo csghub-airgap deploy \
-  --input /opt/csghub-bundle \
-  --skip-nvdp=false  ## This will add `--default-runtime=nvidia` to --k3s-args automatic
+# Skip K3s install (only import images and install charts)
+sudo csghub-airgap deploy --input /opt/csghub-bundle --skip k3s
 
-# Set custom Helm values during deployment
+# Skip all image imports (images already loaded another way)
+sudo csghub-airgap deploy --input /opt/csghub-bundle --skip image
+
+# Skip runtime image import
+sudo csghub-airgap deploy --input /opt/csghub-bundle --skip runtime
+
+# Skip specific charts
+sudo csghub-airgap deploy --input /opt/csghub-bundle --skip longhorn
+sudo csghub-airgap deploy --input /opt/csghub-bundle --skip nvdp
+
+# Override Helm values at deploy time
 sudo csghub-airgap deploy \
   --input /opt/csghub-bundle \
   --set csghub.global.persistence.size=200Gi
 
-# Add K3s environment variables
+# Extra K3s args and env
 sudo csghub-airgap deploy \
   --input /opt/csghub-bundle \
-  --k3s-env "K3S_NODE_NAME=server01" \
-  --k3s-env "K3S_DATASTORE_CAFILE=/etc/ssl/certs/ca-certificates.crt"
+  --k3s-arg "--default-runtime=nvidia" \
+  --k3s-env "K3S_NODE_NAME=server01"
 ```
 
-#### Cleanup
+### Cleanup
 
 Remove K3s and all deployed services:
 
@@ -225,13 +299,9 @@ Remove K3s and all deployed services:
 sudo csghub-airgap cleanup [options]
 ```
 
-##### Options
-
 | Flag    | Alias | Description                                | Default |
 | :------ | :---- | :----------------------------------------- | :------ |
 | `--yes` | `-y`  | Skip confirmation and run cleanup directly | `false` |
-
-##### Examples
 
 ```shell
 # Interactive cleanup (with confirmation prompt)
@@ -241,26 +311,25 @@ sudo csghub-airgap cleanup
 sudo csghub-airgap cleanup --yes
 ```
 
-#### List Runtime Images
+> This effectively runs `/usr/local/bin/k3s-uninstall.sh`. If it fails, run that script manually.
 
-List available runtime images from csghub-server configs before creating a bundle:
+### List Runtime Images
+
+List available runtime images from csghub-server configs before creating a bundle (no root needed):
 
 ```shell
 csghub-airgap list-images [options]
 ```
-
-##### Options
 
 | Flag           | Alias | Description                                                  | Default   |
 | :------------- | :---- | :----------------------------------------------------------- | :-------- |
 | `--source`     |       | Where to fetch configs: `github`, `local`                    | `github`  |
 | `--version`    | `-v`  | Git branch or tag for csghub-server (e.g., `main`, `v1.2.0`) | `main`    |
 | `--local-path` |       | Local directory containing csghub-server configs (used with `--source local`) | `.`       |
-| `--category`   | `-c`  | Filter by category (can specify multiple): `evaluation`, `finetune`, `inference`, `job`, `notebook`, `space` | (all)     |
+| `--category`   | `-c`  | Filter by category (can specify multiple): `evaluation`, `finetune`, `inference`, `job`, `notebook`, `space` | (all) |
 | `--compute`    |       | Filter by compute type (comma-separated): `cpu`, `gpu`, `dcu` | (all)     |
+| `--proxy`      |       | Use ghfast.top proxy prefix for GitHub downloads             | `false`   |
 | `--format`     | `-f`  | Output format: `table`, `json`                               | `table`   |
-
-##### Examples
 
 ```shell
 # List all runtime images (fetches from GitHub)
@@ -278,7 +347,7 @@ csghub-airgap list-images --compute gpu
 # List CPU images for finetune and inference
 csghub-airgap list-images --category finetune --category inference --compute cpu
 
-# List images from a local csghub-server directory (useful for air-gapped environments)
+# List images from a local csghub-server directory (air-gapped)
 csghub-airgap list-images \
   --source local \
   --local-path /path/to/csghub-server \
@@ -288,109 +357,93 @@ csghub-airgap list-images \
 csghub-airgap list-images --category notebook --format json
 ```
 
+## The --skip Flag
+
+`--skip` accepts comma-separated, repeatable values (case-insensitive). Two kinds of values:
+
+**Kinds (coarse-grained)**
+
+| Value     | create behavior                              | deploy behavior                               |
+| :-------- | :------------------------------------------- | :-------------------------------------------- |
+| `k3s`     | Skip K3s download                            | Skip K3s install                              |
+| `charts`  | Skip chart pull (reuse existing files), still export main images | Skip chart install/upgrade, still import images |
+| `image`   | Skip all image export (main + runtime)       | Skip all image import (main + runtime)        |
+| `runtime` | Skip only runtime image export               | Skip only runtime image import                |
+| `package` | Skip NVIDIA package download                 | Skip NVIDIA package install                   |
+| `tar`     | Skip packing: no `.tar`, keep the plain directory | Skip unpacking: `--input` must point at an already-unpacked directory |
+
+**Chart names**
+
+| Value      | Description                                                       |
+| :--------- | :----------------------------------------------------------------- |
+| `csghub`   | Skip the csghub chart (pull, its images, runtime images)          |
+| `longhorn` | Skip the longhorn chart                                            |
+| `nvdp`     | Skip the NVIDIA device plugin chart (and package operations)      |
+
+> `--skip image` also sets `SkipRuntimeImages`, i.e. runtime images are skipped together.
+> Chart names not present in the bundle are ignored with a warning.
+
+**Image-only mode**: `--skip k3s,charts,package` (without `--skip image`) enters "export images only" mode and shows a main image selection UI per chart. Adding `--quiet` skips the UI and exports all main images directly.
+
+```shell
+# Export only images, skip the main image selection (export all main images)
+sudo csghub-airgap create --skip k3s,charts,package --quiet
+```
+
 ## Complete Workflow Examples
 
 ### Example 1: Basic Air-Gap Deployment
 
-#### On Internet-Connected Machine (Bundle Creation)
-
 ```shell
-# Create bundle with all components
-sudo csghub-airgap create
+# 1) On the internet-connected machine (produces /opt/csghub-bundle.tar)
+sudo csghub-airgap create --output /opt/csghub-bundle
 
-# Verify bundle contents
-ls -la ./csghub-airgap-2026-04-01
-```
+# 2) Copy the archive to the air-gapped machine (USB, SCP, etc.)
+scp /opt/csghub-bundle.tar user@airgap-host:/root/
 
-#### Transfer to Air-Gapped Machine
-
-```shell
-# Copy the tarball to air-gapped machine via USB, SCP, etc.
-scp ./csghub-airgap-2026-04-01 user@airgap-machine:/root/
-```
-
-#### On Air-Gapped Machine (Deployment)
-
-```shell
-# Deploy CSGHub
+# 3) Deploy on the air-gapped machine (auto-unpacked)
 sudo csghub-airgap deploy \
+  --input /opt/csghub-bundle.tar \
   --domain csghub.internal.company.com
 ```
 
-### Example 2: Production Deployment with Custom Storage
-
-#### Bundle Creation
+### Example 2: GPU Environment
 
 ```shell
-sudo csghub-airgap create \
-  --output /opt/csghub-prod-bundle \
-  --csghub-version 2.0.0 \
-  --longhorn-version 1.11.1 \
-  --set csghub.global.persistence.storageClass=longhorn \
-  --set csghub.global.persistence.size=200Gi
-```
+# Bundle (includes nvdp and NVIDIA packages)
+sudo csghub-airgap create --output /opt/csghub-gpu
 
-#### Deployment
-
-```shell
+# Deploy (auto-installs nvdp when a GPU is detected; auto-disables without one)
 sudo csghub-airgap deploy \
-  --input /opt/csghub-prod-bundle \
-  --domain csghub.prod.company.com \
-  --data /data
+  --input /opt/csghub-gpu \
+  --domain csghub.gpu.company.com
 ```
 
-### Example 3: GPU-Accelerated Deployment
-
-#### Bundle Creation with NVDP
+### Example 3: Export/Import Images Only (Reuse Existing K3s)
 
 ```shell
-sudo csghub-airgap create \
-  --output /opt/csghub-gpu-bundle \
-  --csghub-version 2.0.0 \
-  --nvdp-version 0.19.0
+# On the bundle machine
+sudo csghub-airgap create --output /opt/csghub-img --skip k3s,charts,package
+
+# On the target machine (K3s already installed, import images only)
+sudo csghub-airgap deploy --input /opt/csghub-img --skip k3s,charts
 ```
 
-#### Deployment with GPU Support
+### Example 4: Redeploy
 
 ```shell
-sudo csghub-airgap deploy \
-  --input /opt/csghub-gpu-bundle \
-  --domain csghub.gpu.company.com \
-  --skip-nvdp=false
-```
-
-### Example 4: Minimal Deployment (No Longhorn, No NVDP)
-
-#### Bundle Creation
-
-```shell
-sudo csghub-airgap create \
-  --output /opt/csghub-minimal-bundle \
-  --arch amd64 \
-  --csghub-version 2.0.0 \
-  --skip-longhorn \
-  --skip-nvdp
-```
-
-#### Deployment
-
-```shell
-sudo csghub-airgap deploy \
-  --input /opt/csghub-minimal-bundle \
-  --skip-longhorn \
-  --domain csghub.minimal.company.com
-```
-
-### Example 5: Cleanup and Re-deployment
-
-```shell
-# Clean up existing deployment
 sudo csghub-airgap cleanup --yes
+sudo csghub-airgap deploy --input /opt/csghub-bundle --domain csghub.company.com
+```
 
-# Deploy fresh
-sudo csghub-airgap deploy \
-  --input /opt/csghub-prod-bundle \
-  --domain csghub.company.com
+## Post-Deployment Verification
+
+```shell
+# Check CSGHub pods are ready
+kubectl get pods -n csghub
+
+# List namespaces
+kubectl get ns
 ```
 
 ## Troubleshooting
@@ -405,14 +458,11 @@ sudo csghub-airgap [command]
 
 ### Architecture Mismatch
 
-Ensure the bundle architecture matches your system:
+Ensure the bundle architecture matches your system; re-create the bundle with the matching `--arch`:
 
 ```shell
-# Check system architecture
 uname -m
-
-# Create bundle with correct architecture
-sudo csghub-airgap create --arch $(uname -m) --csghub-version 2.0.0
+sudo csghub-airgap create --arch $(uname -m)
 ```
 
 ### Debug Mode
@@ -420,7 +470,7 @@ sudo csghub-airgap create --arch $(uname -m) --csghub-version 2.0.0
 Enable debug logging for detailed output:
 
 ```shell
-sudo csghub-airgap create --debug --csghub-version 2.0.0
+sudo csghub-airgap create --debug
 sudo csghub-airgap deploy --debug --input /path/to/bundle
 ```
 
@@ -437,38 +487,6 @@ If cleanup fails, you can manually remove K3s:
 /usr/local/bin/k3s-uninstall.sh
 ```
 
-### Bundle Creation Fails
-
-Check disk space and permissions:
-
-```shell
-# Check available disk space
-df -h
-
-# Check write permissions in output directory
-ls -ld /path/to/output/directory
-
-# Ensure Docker/container runtime is running
-systemctl status docker
-```
-
-### Deployment Fails
-
-Verify bundle integrity and system requirements:
-
-bash
-
-```shell
-# Check bundle metadata
-cat /path/to/bundle/metadata.yaml
-
-# Verify K3s is not already running
-systemctl status k3s
-
-# Check port availability
-netstat -tulpn | grep -E '6443|8080'
-```
-
 ### Common Error Messages
 
 | Error                   | Solution                                                |
@@ -477,7 +495,8 @@ netstat -tulpn | grep -E '6443|8080'
 | `architecture mismatch` | Create bundle with correct `--arch` flag                |
 | `bundle not found`      | Verify `--input` path is correct                        |
 | `k3s already running`   | Run `csghub-airgap cleanup` first                       |
-| `disk space full`       | Free up space or specify different `--output` directory |
+| stale image cache       | Re-create with `--force-pull` to force a fresh pull     |
+| GitHub access restricted | Add `--proxy`; or use `list-images --source local`      |
 
 ## Security Notes
 
@@ -489,8 +508,6 @@ netstat -tulpn | grep -E '6443|8080'
 ## Uninstallation
 
 To completely remove csghub-airgap:
-
-bash
 
 ```shell
 # Remove the binary

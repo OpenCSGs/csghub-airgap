@@ -22,7 +22,7 @@ type BundleSpec struct {
 	// and install (deploy), independent of the nvdp chart state. It bypasses
 	// the package download, its cache validation, and the install step.
 	SkipPkg bool `yaml:"skip_pkg,omitempty"`
-	// SkipTar skips packing the bundle directory into a tar.gz (create) and
+	// SkipTar skips packing the bundle directory into a tar (create) and
 	// unpacking it (deploy). When set, create leaves the bundle as a plain
 	// directory and deploy expects an already-unpacked directory.
 	SkipTar               bool        `yaml:"skip_tar,omitempty"`
