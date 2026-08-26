@@ -1,7 +1,9 @@
 package file
 
 import (
+	"crypto/sha256"
 	"csghub-airgap/internal/log"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -57,6 +59,50 @@ func DownloadFile(url, savePath string) error {
 	}
 
 	return fmt.Errorf("download failed after %d retries: %v", DefaultRetry, lastErr)
+}
+
+// DownloadFileWithChecksum downloads url to savePath and verifies the resulting
+// file against the expected SHA-256. DownloadFile only checks that the file is
+// non-empty, so a partial download resumed into the wrong bytes, or a corrupt
+// file returned by a mirror/proxy, silently passes as success. On a mismatch
+// the file is deleted and re-downloaded from scratch (fresh, no resume) before
+// giving up.
+func DownloadFileWithChecksum(url, savePath, expected string) error {
+	for attempt := 0; ; attempt++ {
+		if err := DownloadFile(url, savePath); err != nil {
+			return err
+		}
+
+		actual, err := sha256Hex(savePath)
+		if err != nil {
+			return fmt.Errorf("failed to compute sha256 of %s: %v", savePath, err)
+		}
+		if actual == expected {
+			log.Infof("SHA-256 verified: %s", filepath.Base(savePath))
+			return nil
+		}
+
+		if attempt >= DefaultRetry {
+			return fmt.Errorf("sha256 verification failed for %s: expected %s, got %s", savePath, expected, actual)
+		}
+		log.Warnf("SHA-256 mismatch for %s (expected %s, got %s); deleting and re-downloading from scratch", filepath.Base(savePath), expected, actual)
+		_ = os.Remove(savePath)
+	}
+}
+
+// sha256Hex returns the lowercase hex SHA-256 of the file at path.
+func sha256Hex(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // downloadOnce performs a single download attempt
