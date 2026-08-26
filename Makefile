@@ -106,4 +106,4 @@ clean:
 ## help: Show available commands
 help:
 	@echo "Usage:"
-	@sed -n 's/^##//p' Makefile | colu        mn -t -s ':' | sed -e 's/^/ /'
+	@sed -n 's/^##//p' Makefile | column -t -s ':' | sed -e 's/^/ /'
