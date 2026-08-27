@@ -27,12 +27,15 @@ func Download(ks *spec.K3sSpec) error {
 	// The official release publishes sha256sum-<arch>.txt. Fetch the expected
 	// hash for the airgap images so a corrupt/incomplete download is caught and
 	// re-fetched instead of being shipped in the bundle. A missing checksum only
-	// warns, so an unreachable checksum endpoint does not block create.
+	// warns, so an unreachable checksum endpoint does not block create. Dry-run
+	// skips the fetch entirely (it is a live network call).
 	imageSHA := ""
-	if sha, err := fetchAirgapImageSHA256(ks); err != nil {
-		log.Warnf("Skipping airgap image checksum verification: %v", err)
-	} else {
-		imageSHA = sha
+	if !config.DryRun {
+		if sha, err := fetchAirgapImageSHA256(ks); err != nil {
+			log.Warnf("Skipping airgap image checksum verification: %v", err)
+		} else {
+			imageSHA = sha
+		}
 	}
 
 	assets := []Asset{
@@ -82,6 +85,10 @@ func Download(ks *spec.K3sSpec) error {
 			return err
 		}
 
+		// Dry-run prints the curl command but writes nothing, so skip chmod.
+		if config.DryRun {
+			continue
+		}
 		if asset.Executable {
 			if err := os.Chmod(asset.Dest, 0755); err != nil {
 				return err

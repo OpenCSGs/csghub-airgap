@@ -17,7 +17,7 @@ import (
 
 func Upgrade(spec *spec.ChartSpec) error {
 	if config.DryRun {
-		log.Infof("[DRY-RUN] would upgrade release %s with chart %s in namespace %s", spec.RepoName, spec.ChartFilePath(), spec.RepoName)
+		log.Infof("[DRY-RUN] $ %s", HelmUpgradeCmd(spec))
 		return nil
 	}
 

@@ -6,6 +6,8 @@ import (
 	"csghub-airgap/internal/log"
 	"fmt"
 	"os"
+	"sort"
+	"strings"
 )
 
 var (
@@ -34,11 +36,17 @@ func SetParams(params map[string]string) error {
 	}
 
 	if config.DryRun {
-		log.Infof("[DRY-RUN] would write kernel sysctl params to %s", DefaultKernelConfFile)
-		for k, v := range merged {
-			log.Infof("[DRY-RUN]   %s = %s", k, v)
+		var lines []string
+		keys := make([]string, 0, len(merged))
+		for k := range merged {
+			keys = append(keys, k)
 		}
-		log.Infof("[DRY-RUN]   then run: sysctl -p %s", DefaultKernelConfFile)
+		sort.Strings(keys)
+		for _, k := range keys {
+			lines = append(lines, fmt.Sprintf("%s = %s", k, merged[k]))
+		}
+		log.Infof("[DRY-RUN] $ printf '%s\\n' > %s", strings.Join(lines, `\n`), DefaultKernelConfFile)
+		log.Infof("[DRY-RUN] $ sysctl -p %s", DefaultKernelConfFile)
 		return nil
 	}
 

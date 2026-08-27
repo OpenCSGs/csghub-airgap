@@ -14,6 +14,7 @@ import (
 	"csghub-airgap/internal/utils/extract"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"time"
 )
@@ -58,11 +59,14 @@ func (s *Spec) Create() error {
 
 		// Dry-run: report what would be done for this chart and move on. Pulling
 		// and exporting are skipped so a missing local chart file cannot fail
-		// the preview.
+		// the preview. The helm pull command is real and copy-pasteable.
 		if config.DryRun {
-			log.Infof("[DRY-RUN] would process chart %s (pull chart version %s, export main images)", c.ChartName, c.ChartVersion)
+			if !s.SkipCharts {
+				log.Infof("[DRY-RUN] $ %s", chart.HelmPullCmd(&c))
+			}
+			log.Infof("[DRY-RUN] would export main images for chart %s", c.ChartName)
 			if c.RepoName == "csghub" && !s.SkipRuntimeImages && !s.Quiet {
-				log.Infof("[DRY-RUN]   would prompt to select runtime images, then export the selection")
+				log.Infof("[DRY-RUN] would prompt to select runtime images, then export the selection")
 			}
 			continue
 		}
@@ -160,7 +164,8 @@ func (s *Spec) Create() error {
 		dest := config.DefaultBaseDir + ".tar"
 		log.Infof("Packing bundle to %s ...", dest)
 		if config.DryRun {
-			log.Infof("[DRY-RUN] would pack bundle to %s (then remove %s)", dest, config.DefaultBaseDir)
+			log.Infof("[DRY-RUN] $ tar -cf %s -C %s %s", dest, filepath.Dir(config.DefaultBaseDir), filepath.Base(config.DefaultBaseDir))
+			log.Infof("[DRY-RUN] $ rm -rf %s", config.DefaultBaseDir)
 		} else {
 			if err := extract.Tar(config.DefaultBaseDir, dest); err != nil {
 				return err

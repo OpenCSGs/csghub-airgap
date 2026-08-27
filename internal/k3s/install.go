@@ -15,14 +15,23 @@ import (
 )
 
 func Install(ks *spec.K3sSpec) error {
-	if config.DryRun {
-		log.Infof("[DRY-RUN] would install k3s: copy binaries to /usr/local/bin, load airgap images")
-		log.Infof("[DRY-RUN]   install command: %s", ks.InstallCmd())
-		return nil
-	}
-
 	defaultDataDir, _ := ks.GetArg("--data-dir")
 	dataDir := utils.NVL(defaultDataDir, "/var/lib/rancher/k3s")
+
+	if config.DryRun {
+		helmOS := ks.TargetOS
+		if helmOS == "" {
+			helmOS = runtime.GOOS
+		}
+		log.Infof("[DRY-RUN] $ install -m 0755 %s /usr/local/bin/k3s", ks.BinaryPath())
+		log.Infof("[DRY-RUN] $ install -m 0644 %s %s", ks.ImagePath(), filepath.Join(dataDir, "agent/images"))
+		log.Infof("[DRY-RUN] $ tar -xzf %s -C /usr/local/bin", ks.HelmBinaryPath())
+		log.Infof("[DRY-RUN] $ mv /usr/local/bin/%s-%s/helm /usr/local/bin/helm && rm -rf /usr/local/bin/%s-%s", helmOS, runtime.GOARCH, helmOS, runtime.GOARCH)
+		log.Infof("[DRY-RUN] $ %s", ks.InstallCmd())
+		log.Infof("[DRY-RUN] $ cp /etc/rancher/k3s/k3s.yaml /root/.kube/config")
+		log.Infof("[DRY-RUN] $ ln -sf %s /etc/crictl.yaml", filepath.Join(dataDir, "agent/etc/crictl.yaml"))
+		return nil
+	}
 
 	assets := []Asset{
 		{

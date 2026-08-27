@@ -18,7 +18,7 @@ func Execute(command string, args ...string) error {
 	}
 
 	if config.DryRun {
-		log.Infof("[DRY-RUN] would execute: %s %s", command, strings.Join(args, " "))
+		log.Infof("[DRY-RUN] $ %s %s", command, strings.Join(args, " "))
 		return nil
 	}
 

@@ -24,7 +24,7 @@ func Pull(spec *spec.ChartSpec) error {
 	}
 
 	if config.DryRun {
-		log.Infof("[DRY-RUN] would pull chart %s version %s", chartRef, spec.ChartVersion)
+		log.Infof("[DRY-RUN] $ %s", HelmPullCmd(spec))
 		return nil
 	}
 

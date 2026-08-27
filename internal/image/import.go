@@ -20,6 +20,17 @@ import (
 
 func Import(spec *spec.ImageSpec) error {
 	imageFilePath := spec.ImageFilePath()
+
+	// Dry-run previews the import command without requiring the tar to exist.
+	if config.DryRun {
+		cmd := fmt.Sprintf("ctr -n k8s.io images import %s", imageFilePath)
+		if sock, err := discoverContainerdSocket(); err == nil {
+			cmd = fmt.Sprintf("ctr --address %s -n k8s.io images import %s", sock, imageFilePath)
+		}
+		log.Infof("[DRY-RUN] $ %s", cmd)
+		return nil
+	}
+
 	if _, err := os.Stat(imageFilePath); os.IsNotExist(err) {
 		return fmt.Errorf("image bundle %s not found: %w\n"+
 			"  The tar file does not exist on this host.\n"+
@@ -28,11 +39,6 @@ func Import(spec *spec.ImageSpec) error {
 			"    - re-run deploy without --skip image to import it, or\n"+
 			"    - keep --skip image if the images are already loaded another way",
 			imageFilePath, err)
-	}
-
-	if config.DryRun {
-		log.Infof("[DRY-RUN] would import images from %s into containerd", imageFilePath)
-		return nil
 	}
 
 	sock, err := discoverContainerdSocket()

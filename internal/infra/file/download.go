@@ -26,7 +26,7 @@ const (
 // DownloadFile is a generic file download function
 func DownloadFile(url, savePath string) error {
 	if config.DryRun {
-		log.Infof("[DRY-RUN] would download: %s -> %s", url, savePath)
+		log.Infof("[DRY-RUN] $ curl -fL -C - -o %s %s", savePath, url)
 		return nil
 	}
 

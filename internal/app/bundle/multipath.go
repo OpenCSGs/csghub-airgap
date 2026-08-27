@@ -69,7 +69,7 @@ func checkMultipath(quiet bool) error {
 	log.Warnf("  - Longhorn replicas may report stale device paths")
 
 	if config.DryRun {
-		log.Infof("[DRY-RUN] would stop and disable multipathd: %s", strings.Join(multipathUnits, ", "))
+		log.Infof("[DRY-RUN] $ systemctl stop %s && systemctl disable %s", strings.Join(multipathUnits, " "), strings.Join(multipathUnits, " "))
 		return nil
 	}
 
