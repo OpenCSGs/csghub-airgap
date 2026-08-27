@@ -16,6 +16,10 @@ var (
 	DefaultBaseDir      = fmt.Sprintf("csghub-airgap-%s", time.Now().Format("2006-01-02"))
 	DefaultArchitecture = runtime.GOARCH
 	UseProxy            = false
+	// DryRun makes create/deploy print every operation (downloads, shell
+	// commands, image imports/exports, chart installs) without executing
+	// anything. Set via --dry-run.
+	DryRun = false
 )
 
 // MaybeWrapProxy prepends the ghfast.top proxy prefix to a GitHub URL when
@@ -67,4 +71,11 @@ func InitArchitecture(c *cli.Context) {
 func InitProxy(c *cli.Context) {
 	UseProxy = c.Bool("proxy")
 	log.Debugf("Using proxy: %v", UseProxy)
+}
+
+func InitDryRun(c *cli.Context) {
+	DryRun = c.Bool("dry-run")
+	if DryRun {
+		log.Warn("Dry-run mode enabled: printing operations without executing them")
+	}
 }

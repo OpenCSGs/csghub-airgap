@@ -1,6 +1,8 @@
 package shell
 
 import (
+	"csghub-airgap/internal/config"
+	"csghub-airgap/internal/log"
 	"errors"
 	"fmt"
 	"os"
@@ -13,6 +15,11 @@ import (
 func Execute(command string, args ...string) error {
 	if command == "" {
 		return errors.New("command must not be empty")
+	}
+
+	if config.DryRun {
+		log.Infof("[DRY-RUN] would execute: %s %s", command, strings.Join(args, " "))
+		return nil
 	}
 
 	cmd := exec.Command(command, args...)

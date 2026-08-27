@@ -2,6 +2,7 @@ package chart
 
 import (
 	"context"
+	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
 	"fmt"
@@ -15,6 +16,11 @@ import (
 )
 
 func Upgrade(spec *spec.ChartSpec) error {
+	if config.DryRun {
+		log.Infof("[DRY-RUN] would upgrade release %s with chart %s in namespace %s", spec.RepoName, spec.ChartFilePath(), spec.RepoName)
+		return nil
+	}
+
 	ctx := context.Background()
 
 	namespace := spec.RepoName

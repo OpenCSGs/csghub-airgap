@@ -16,9 +16,9 @@ package pkg
 // fresh; the user does not need to manually clean the package directory.
 
 import (
+	"crypto/sha256"
 	osi "csghub-airgap/internal/infra/os"
 	"csghub-airgap/internal/log"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"

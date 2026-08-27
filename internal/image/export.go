@@ -1,6 +1,7 @@
 package image
 
 import (
+	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/image/utils"
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
@@ -13,6 +14,14 @@ import (
 )
 
 func Export(spec *spec.ImageSpec) error {
+	if config.DryRun {
+		log.Infof("[DRY-RUN] would export %d image(s) for %s to %s:", len(spec.Images), spec.ChartName, spec.ImageFilePath())
+		for _, img := range spec.Images {
+			log.Infof("  %s", img)
+		}
+		return nil
+	}
+
 	imageFilePath := spec.ImageFilePath()
 	imageFileName := spec.ImageFileName()
 	incompleteFlag := imageFilePath + ".incomplete"

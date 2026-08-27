@@ -2,6 +2,7 @@ package file
 
 import (
 	"crypto/sha256"
+	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/log"
 	"encoding/hex"
 	"errors"
@@ -24,6 +25,11 @@ const (
 
 // DownloadFile is a generic file download function
 func DownloadFile(url, savePath string) error {
+	if config.DryRun {
+		log.Infof("[DRY-RUN] would download: %s -> %s", url, savePath)
+		return nil
+	}
+
 	dir := filepath.Dir(savePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create directory %s: %v", dir, err)

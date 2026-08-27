@@ -1,6 +1,7 @@
 package chart
 
 import (
+	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
 	"fmt"
@@ -19,6 +20,11 @@ func Pull(spec *spec.ChartSpec) error {
 
 	if _, err := os.Stat(spec.ChartFilePath()); err == nil {
 		log.Infof("Chart %s already exists", chartFileName)
+		return nil
+	}
+
+	if config.DryRun {
+		log.Infof("[DRY-RUN] would pull chart %s version %s", chartRef, spec.ChartVersion)
 		return nil
 	}
 

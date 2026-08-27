@@ -106,6 +106,7 @@ sudo csghub-airgap create [options]
 | `--k3s-arg`       |       | Extra CLI arguments for K3s (e.g., `--k3s-arg=--default-runtime=nvidia`) | `[]`                |
 | `--skip`          |       | Skip components: comma-separated chart names (csghub, longhorn, nvdp) and/or kinds (k3s, charts, image, runtime, package, tar) |   |
 | `--quiet`         | `-q`  | Skip interactive prompts; runtime image selection is skipped (no images selected) | `false` |
+| `--dry-run`       |       | Print the operations that would be performed (downloads, image exports, packing) without executing them | `false` |
 | `--set`           | `-s`  | Set Helm values (e.g., csghub.key=value, supports multiple)          | `[]`                     |
 
 #### Execution Flow
@@ -234,6 +235,7 @@ sudo csghub-airgap deploy [options]
 | `--data`          | `-D`  | Specify data directory for K3s and Longhorn                | (system default)         |
 | `--domain`        |       | Specify CSGHub domain                                      | `csghub.example.com`     |
 | `--quiet`         | `-q`  | Skip interactive prompts; multipathd is auto-disabled (no prompt) | `false`          |
+| `--dry-run`       |       | Print the operations that would be performed (incl. k3s install command, chart install) without executing them | `false` |
 | `--skip`          |       | Same as `create`: `k3s`, `charts`, `image`, `runtime`, `package`, `tar` and chart names |   |
 | `--set`           | `-s`  | Set Helm values (e.g., csghub.key=value, supports multiple) | `[]`                   |
 

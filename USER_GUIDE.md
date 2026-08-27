@@ -39,6 +39,7 @@ sudo csghub-airgap create [options]
 | `--k3s-arg`      |      | 传给 K3s 的额外启动参数（如 `--k3s-arg=--default-runtime=nvidia`）        | `[]`                        |
 | `--skip`         |      | 跳过组件：图表名（`csghub`、`longhorn`、`nvdp`）和/或类别（`k3s`、`charts`、`image`、`runtime`、`package`、`tar`），逗号分隔、可多次 |             |
 | `--quiet`        | `-q` | 跳过交互式提示；设置后 runtime 镜像选择被跳过（不选择任何 runtime 镜像）      | `false`                     |
+| `--dry-run`      |      | 只打印将要执行的操作（下载、镜像导出、打包等）而不真正执行                    | `false`                     |
 | `--set`          | `-s` | 设置 Helm values（如 `csghub.key=value`，可多次）                         | `[]`                        |
 
 ### 执行流程
@@ -171,6 +172,7 @@ sudo csghub-airgap deploy [options]
 | `--data`            | `-D` | K3s 与 Longhorn 的数据目录                                            | 系统默认                 |
 | `--domain`          |      | CSGHub 访问域名                                                      | `csghub.example.com`     |
 | `--quiet`           | `-q` | 跳过交互式提示；设置后 multipathd 被自动停止并禁用（不再询问）           | `false`                  |
+| `--dry-run`         |      | 只打印将要执行的操作（含 k3s 安装命令、图表安装等）而不真正执行           | `false`                  |
 | `--skip`            |      | 同 `create`：`k3s`、`charts`、`image`、`runtime`、`package`、`tar` 及图表名    |                          |
 | `--set`             | `-s` | 设置 Helm values（如 `csghub.key=value`，可多次）                     | `[]`                     |
 

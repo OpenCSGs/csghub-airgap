@@ -73,6 +73,11 @@ func Create() *cli.Command {
 				Category: "> Preflight",
 				Usage:    "Skip interactive prompts. When set, runtime image selection is skipped (no images selected)",
 			},
+			&cli.BoolFlag{
+				Name:     "dry-run",
+				Category: "> Global",
+				Usage:    "Print the operations that would be performed without executing them",
+			},
 			// ===== Helm values =====
 			&cli.StringSliceFlag{
 				Name:     "set",
@@ -97,6 +102,7 @@ func Create() *cli.Command {
 			config.InitBaseDir(c)
 			config.InitArchitecture(c)
 			config.InitProxy(c)
+			config.InitDryRun(c)
 
 			// load spec
 			bs, err := spec.LoadBundleSpec()

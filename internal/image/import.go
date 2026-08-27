@@ -3,6 +3,7 @@ package image
 import (
 	"archive/tar"
 	"context"
+	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
 	"encoding/json"
@@ -27,6 +28,11 @@ func Import(spec *spec.ImageSpec) error {
 			"    - re-run deploy without --skip image to import it, or\n"+
 			"    - keep --skip image if the images are already loaded another way",
 			imageFilePath, err)
+	}
+
+	if config.DryRun {
+		log.Infof("[DRY-RUN] would import images from %s into containerd", imageFilePath)
+		return nil
 	}
 
 	sock, err := discoverContainerdSocket()

@@ -9,8 +9,9 @@ package bundle
 
 import (
 	"bufio"
-	"fmt"
+	"csghub-airgap/internal/config"
 	osi "csghub-airgap/internal/infra/os"
+	"fmt"
 	"os"
 	"strings"
 
@@ -66,6 +67,11 @@ func checkMultipath(quiet bool) error {
 	log.Warnf("  - multipath may claim block devices before Longhorn can use them")
 	log.Warnf("  - PVCs may fail to mount or get stuck in Pending")
 	log.Warnf("  - Longhorn replicas may report stale device paths")
+
+	if config.DryRun {
+		log.Infof("[DRY-RUN] would stop and disable multipathd: %s", strings.Join(multipathUnits, ", "))
+		return nil
+	}
 
 	if quiet {
 		log.Infof("--quiet set: stopping and disabling multipathd")

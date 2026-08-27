@@ -67,6 +67,11 @@ func Deploy() *cli.Command {
 				Category: "> Preflight",
 				Usage:    "Skip interactive prompts. When set, multipathd is auto-disabled (instead of prompting)",
 			},
+			&cli.BoolFlag{
+				Name:     "dry-run",
+				Category: "> Global",
+				Usage:    "Print the operations that would be performed without executing them",
+			},
 			&cli.StringSliceFlag{
 				Name:     "skip",
 				Category: ">​Global",
@@ -86,6 +91,7 @@ func Deploy() *cli.Command {
 			// init config
 			config.InitBaseDir(c)
 			config.InitProxy(c)
+			config.InitDryRun(c)
 
 			// If --input points at the bundle archive produced by `create`,
 			// unpack it before loading metadata. Skipped with --skip tar (the
@@ -99,9 +105,13 @@ func Deploy() *cli.Command {
 				}
 			}
 
-			// Run as user root
-			if err := user.EnsureRoot(); err != nil {
-				return err
+			// Run as user root (dry-run previews the plan, so it does not require root)
+			if !config.DryRun {
+				if err := user.EnsureRoot(); err != nil {
+					return err
+				}
+			} else {
+				log.Debugf("Skipping root check (dry-run)")
 			}
 
 			// load spec
@@ -110,7 +120,7 @@ func Deploy() *cli.Command {
 				return err
 			}
 
-			if bs.Arch != runtime.GOARCH {
+			if bs.Arch != runtime.GOARCH && !config.DryRun {
 				log.Fatalf("Architecture mismatch: bundle requires %s, but current system is %s", bs.Arch, runtime.GOARCH)
 			}
 

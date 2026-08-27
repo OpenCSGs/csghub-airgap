@@ -56,6 +56,17 @@ func (s *Spec) Create() error {
 			continue
 		}
 
+		// Dry-run: report what would be done for this chart and move on. Pulling
+		// and exporting are skipped so a missing local chart file cannot fail
+		// the preview.
+		if config.DryRun {
+			log.Infof("[DRY-RUN] would process chart %s (pull chart version %s, export main images)", c.ChartName, c.ChartVersion)
+			if c.RepoName == "csghub" && !s.SkipRuntimeImages && !s.Quiet {
+				log.Infof("[DRY-RUN]   would prompt to select runtime images, then export the selection")
+			}
+			continue
+		}
+
 		if s.SkipCharts {
 			// Prefer reusing an already-pulled chart file; if it is missing
 			// (first run with --skip charts, or image-only mode), pull it.
@@ -135,7 +146,9 @@ func (s *Spec) Create() error {
 		}
 	}
 
-	if err := metadata.Save(s); err != nil {
+	if config.DryRun {
+		log.Infof("[DRY-RUN] would write bundle metadata to %s/metadata.yaml", config.DefaultBaseDir)
+	} else if err := metadata.Save(s); err != nil {
 		return err
 	}
 
@@ -146,13 +159,17 @@ func (s *Spec) Create() error {
 	if !s.SkipTar {
 		dest := config.DefaultBaseDir + ".tar"
 		log.Infof("Packing bundle to %s ...", dest)
-		if err := extract.Tar(config.DefaultBaseDir, dest); err != nil {
-			return err
-		}
-		log.Infof("Bundle packed: %s", dest)
-		log.Infof("Removing bundle directory %s", config.DefaultBaseDir)
-		if err := os.RemoveAll(config.DefaultBaseDir); err != nil {
-			return fmt.Errorf("failed to remove bundle directory %s: %w", config.DefaultBaseDir, err)
+		if config.DryRun {
+			log.Infof("[DRY-RUN] would pack bundle to %s (then remove %s)", dest, config.DefaultBaseDir)
+		} else {
+			if err := extract.Tar(config.DefaultBaseDir, dest); err != nil {
+				return err
+			}
+			log.Infof("Bundle packed: %s", dest)
+			log.Infof("Removing bundle directory %s", config.DefaultBaseDir)
+			if err := os.RemoveAll(config.DefaultBaseDir); err != nil {
+				return fmt.Errorf("failed to remove bundle directory %s: %w", config.DefaultBaseDir, err)
+			}
 		}
 	}
 

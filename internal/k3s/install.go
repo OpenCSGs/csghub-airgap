@@ -1,6 +1,7 @@
 package k3s
 
 import (
+	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/infra/net"
 	"csghub-airgap/internal/infra/shell"
 	"csghub-airgap/internal/log"
@@ -14,6 +15,12 @@ import (
 )
 
 func Install(ks *spec.K3sSpec) error {
+	if config.DryRun {
+		log.Infof("[DRY-RUN] would install k3s: copy binaries to /usr/local/bin, load airgap images")
+		log.Infof("[DRY-RUN]   install command: %s", ks.InstallCmd())
+		return nil
+	}
+
 	defaultDataDir, _ := ks.GetArg("--data-dir")
 	dataDir := utils.NVL(defaultDataDir, "/var/lib/rancher/k3s")
 

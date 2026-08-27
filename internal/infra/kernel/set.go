@@ -1,6 +1,7 @@
 package kernel
 
 import (
+	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/infra/shell"
 	"csghub-airgap/internal/log"
 	"fmt"
@@ -30,6 +31,15 @@ func SetParams(params map[string]string) error {
 	// Override with user provided params
 	for k, v := range params {
 		merged[k] = v
+	}
+
+	if config.DryRun {
+		log.Infof("[DRY-RUN] would write kernel sysctl params to %s", DefaultKernelConfFile)
+		for k, v := range merged {
+			log.Infof("[DRY-RUN]   %s = %s", k, v)
+		}
+		log.Infof("[DRY-RUN]   then run: sysctl -p %s", DefaultKernelConfFile)
+		return nil
 	}
 
 	// Open the configuration file for write, create if it doesn't exist, truncate existing.

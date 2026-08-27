@@ -19,12 +19,16 @@ import (
 func (s *Spec) Deploy() error {
 	start := time.Now()
 
-	if err := os.CheckOS(); err != nil {
-		return err
-	}
+	// Dry-run is a pure preview: it prints the plan without executing it, so
+	// it is allowed to run from any machine (even one that could not deploy).
+	if !config.DryRun {
+		if err := os.CheckOS(); err != nil {
+			return err
+		}
 
-	if err := os.CheckArch(); err != nil {
-		return err
+		if err := os.CheckArch(); err != nil {
+			return err
+		}
 	}
 
 	// Auto-disable nvdp (and the NVIDIA toolkit packages that feed it) when
@@ -108,12 +112,14 @@ func (s *Spec) Deploy() error {
 			log.Debugf("Skipping chart install/upgrade for %s (--skip charts)", c.ChartName)
 			continue
 		}
-		if chart.List(&c) {
-			if err := chart.Upgrade(&c); err != nil {
+		// Dry-run cannot query the cluster for existing releases, so it reports
+		// the install/upgrade plan generically instead of calling chart.List.
+		if config.DryRun || !chart.List(&c) {
+			if err := chart.Install(&c); err != nil {
 				return err
 			}
 		} else {
-			if err := chart.Install(&c); err != nil {
+			if err := chart.Upgrade(&c); err != nil {
 				return err
 			}
 		}
