@@ -244,7 +244,7 @@ sudo csghub-airgap deploy [options]
 1. **System check** - must be Linux; the bundle architecture must match the target machine.
 2. **NVIDIA GPU detection** - auto-disable the nvdp chart (and package install) when the host has no NVIDIA GPU.
 3. **NVIDIA package install** - when nvdp is enabled and `--skip package` is not set.
-4. **Kernel parameters** - write required sysctl parameters.
+4. **Kernel parameters** - write required sysctl parameters (skipped with `--skip k3s`, i.e. an own cluster).
 5. **K3s install** - install k3s (unless `--skip k3s`).
 6. **multipathd preflight** - when multipathd is running, prompt to stop and disable it (auto under `--quiet`). Longhorn conflicts with multipath and may hang PVC mounting.
 7. **Per-chart deploy** (each enabled chart):

@@ -58,8 +58,13 @@ func (s *Spec) Deploy() error {
 		}
 	}
 
-	if err := kernel.SetParams(nil); err != nil {
-		return err
+	// Kernel params (sysctl) tune the host for k3s. When k3s is not installed
+	// by this tool (--skip k3s, user brought their own cluster), leave the host
+	// sysctl settings alone.
+	if !s.SkipK3s {
+		if err := kernel.SetParams(nil); err != nil {
+			return err
+		}
 	}
 
 	if !s.SkipK3s {

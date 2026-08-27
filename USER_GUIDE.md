@@ -181,7 +181,7 @@ sudo csghub-airgap deploy [options]
 1. **系统检查**：必须是 Linux；离线包架构必须与目标机器一致，否则直接失败。
 2. **NVIDIA GPU 检测**：本机无 NVIDIA GPU 时，自动禁用 `nvdp` 图表（及对应的软件包安装）。
 3. **NVIDIA 软件包安装**：启用 `nvdp` 且未 `--skip package` 时安装。
-4. **内核参数设置**：写入所需 sysctl 参数。
+4. **内核参数设置**：写入所需 sysctl 参数（`--skip k3s` 使用自有集群时不设置）。
 5. **K3s 安装**：安装 k3s（除非 `--skip k3s`）。
 6. **multipathd 预检**：检测到 `multipathd` 运行时，提示是否停止并禁用（`--quiet` 下自动执行）。Longhorn 与 multipath 冲突可能导致 PVC 挂载卡住。
 7. **逐图表部署**（每个启用的图表）：
