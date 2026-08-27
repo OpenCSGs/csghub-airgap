@@ -251,7 +251,7 @@ sudo csghub-airgap deploy [options]
    - Import main images into containerd (unless `--skip image`).
    - For the `csghub` chart: import runtime images (unless `--skip runtime`; only when runtime images were selected at create time).
    - Install or upgrade the chart (unless `--skip charts`).
-8. **K3s patch** - apply the domain and other config.
+8. **K3s patch** - apply the domain and other config (writes `/etc/hosts` and patches the cluster CoreDNS). When k3s was not installed by this tool (`--skip k3s`, own cluster), prompts for confirmation first; `--quiet` applies it by default.
 
 #### Examples
 

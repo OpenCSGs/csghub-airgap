@@ -1,17 +1,19 @@
 package bundle
 
 import (
+	"bufio"
 	"csghub-airgap/internal/chart"
 	"csghub-airgap/internal/config"
 	"csghub-airgap/internal/image"
 	"csghub-airgap/internal/infra/kernel"
-	"csghub-airgap/internal/infra/os"
+	osi "csghub-airgap/internal/infra/os"
 	"csghub-airgap/internal/infra/pkg"
 	"csghub-airgap/internal/k3s"
 	"csghub-airgap/internal/log"
 	"csghub-airgap/internal/spec"
 	"csghub-airgap/internal/utils"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 )
@@ -22,11 +24,11 @@ func (s *Spec) Deploy() error {
 	// Dry-run is a pure preview: it prints the plan without executing it, so
 	// it is allowed to run from any machine (even one that could not deploy).
 	if !config.DryRun {
-		if err := os.CheckOS(); err != nil {
+		if err := osi.CheckOS(); err != nil {
 			return err
 		}
 
-		if err := os.CheckArch(); err != nil {
+		if err := osi.CheckArch(); err != nil {
 			return err
 		}
 	}
@@ -36,7 +38,7 @@ func (s *Spec) Deploy() error {
 	// safe on non-GPU clusters even though --skip nvdp now defaults to
 	// false (i.e. "install"). Users who want to force-install anyway can
 	// re-enable nvdp.Enabled in the bundle's metadata.yaml by hand.
-	if !os.HasNVIDIAGPU() {
+	if !osi.HasNVIDIAGPU() {
 		for i := range s.Charts {
 			if s.Charts[i].ChartName == "nvidia-device-plugin" && s.Charts[i].Enabled {
 				log.Warnf("No NVIDIA GPU detected on this host; auto-disabling nvdp chart")
@@ -142,7 +144,16 @@ func (s *Spec) Deploy() error {
 		domain = strings.Join(parts[len(parts)-2:], ".")
 	}
 
-	if err := k3s.PatchInstall(s.K3s, domain); err != nil {
+	// The k3s patch appends entries to /etc/hosts and patches the cluster's
+	// CoreDNS (ConfigMap + Deployment + rollout restart) to route the csghub
+	// subdomains to this host. When k3s was NOT installed by this tool
+	// (--skip k3s, user brought their own cluster), that modifies system and
+	// cluster state we did not set up, so ask for confirmation first. --quiet
+	// skips the prompt and applies the patch by default; --dry-run only
+	// previews it.
+	if s.SkipK3s && !s.Quiet && !config.DryRun && !confirmPatch(domain) {
+		log.Warnf("Skipping k3s patch (CoreDNS + /etc/hosts)")
+	} else if err := k3s.PatchInstall(s.K3s, domain); err != nil {
 		return err
 	}
 
@@ -151,6 +162,28 @@ func (s *Spec) Deploy() error {
 	log.Infof("Deploy finished in %s", time.Since(start))
 
 	return nil
+}
+
+// confirmPatch asks the operator whether to run the k3s patch script, which
+// appends entries to /etc/hosts and patches the cluster's CoreDNS to resolve
+// the csghub subdomains (csghub/minio/casdoor/...) to this host. Used when
+// deploying against a cluster that this tool did not install (--skip k3s), so
+// invasive system and cluster changes are not applied silently. Returns true
+// to proceed, false to skip.
+func confirmPatch(domain string) bool {
+	log.Warnf("Deploying without k3s installed by this tool (--skip k3s)")
+	log.Warnf("The k3s patch will modify system + cluster state:")
+	log.Warnf("  - append %s host entries to /etc/hosts", domain)
+	log.Warnf("  - create %s zones in the cluster CoreDNS (csghub/minio/casdoor/runner/...) and restart it", domain)
+	fmt.Print("Apply the k3s patch (CoreDNS + /etc/hosts)? [y/N]: ")
+	reader := bufio.NewReader(os.Stdin)
+	line, err := reader.ReadString('\n')
+	if err != nil {
+		log.Warnf("Could not read user input; skipping k3s patch")
+		return false
+	}
+	answer := strings.TrimSpace(strings.ToLower(line))
+	return answer == "y" || answer == "yes"
 }
 
 // nvdpEnabled returns true if the nvdp chart (nvidia-device-plugin) is set

@@ -188,7 +188,7 @@ sudo csghub-airgap deploy [options]
    - 导入主镜像到 containerd（除非 `--skip image`）。
    - 对 `csghub` 图表：导入 runtime 镜像（除非 `--skip runtime`；仅当打包时选中了 runtime 镜像才导入）。
    - 安装或升级图表（除非 `--skip charts`）。
-8. **K3s 配置修补**：应用域名等配置。
+8. **K3s 配置修补**：应用域名等配置（写入 `/etc/hosts` 并修补集群 CoreDNS）。当未由本工具安装 k3s（`--skip k3s`，使用自有集群）时，会先询问是否执行；`--quiet` 下默认执行，不询问。
 
 ### 示例
 
