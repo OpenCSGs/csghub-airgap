@@ -18,6 +18,13 @@ func Execute(command string, args ...string) error {
 	}
 
 	if config.DryRun {
+		// Strip the bash -c wrapper so the dry-run prints the real command.
+		if command == "bash" || command == "/bin/bash" {
+			if len(args) > 1 && args[0] == "-c" {
+				log.Infof("[DRY-RUN] $ %s", strings.Join(args[1:], " "))
+				return nil
+			}
+		}
 		log.Infof("[DRY-RUN] $ %s %s", command, strings.Join(args, " "))
 		return nil
 	}
