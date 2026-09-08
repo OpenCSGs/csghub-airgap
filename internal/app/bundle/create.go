@@ -121,7 +121,8 @@ func (s *Spec) Create() error {
 					return err
 				}
 				if selected == nil {
-					log.Warnf("Main image selection cancelled for %s; exporting all", c.ChartName)
+					log.Warnf("Main image selection cancelled for %s; skipping image export", c.ChartName)
+					selectedMain = []string{}
 				} else {
 					log.Infof("Selected %d main images for %s", len(selected), c.ChartName)
 					selectedMain = selected

@@ -81,14 +81,18 @@ func Image(spec *is.ChartSpec, runtimeImages []string, opts iu.ExtractOption, se
 			images = selectedMain
 		}
 
-		imageSpec := &is.ImageSpec{
-			Images:       images,
-			ChartName:    spec.ChartName,
-			ChartVersion: spec.ChartVersion,
-		}
+		if len(images) == 0 {
+			log.Infof("No main images selected for %s; skipping main image export", spec.ChartName)
+		} else {
+			imageSpec := &is.ImageSpec{
+				Images:       images,
+				ChartName:    spec.ChartName,
+				ChartVersion: spec.ChartVersion,
+			}
 
-		if err = image.Export(imageSpec); err != nil {
-			return err
+			if err = image.Export(imageSpec); err != nil {
+				return err
+			}
 		}
 	} else {
 		log.Debugf("Skipping main image export for chart %s", spec.ChartName)
