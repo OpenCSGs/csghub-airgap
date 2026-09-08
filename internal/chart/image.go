@@ -55,8 +55,9 @@ var (
 // Image renders the chart, extracts the images it declares, and exports
 // them into the bundle. The main chart images and the user-selected runtime
 // images are exported as separate tars; either can be skipped with
-// skipMain / skipRuntime so `create --skip image` (or
-// `--skip runtime`) can produce a partial bundle.
+// skipMain / skipRuntime so `create --skip image` (or `--skip runtime`)
+// can produce a partial bundle. `--skip image` only skips main chart
+// images; runtime images are controlled independently by `--skip runtime`.
 //
 // When selectedMain is non-nil it is exported (the user picked a subset in
 // the main image TUI); when nil the full extracted main image set is used.

@@ -13,7 +13,7 @@ type BundleSpec struct {
 	// runtime images are still exported/imported.
 	SkipCharts bool `yaml:"skip_charts,omitempty"`
 	// SkipImages skips exporting (create) / importing (deploy) the main
-	// chart images. Charts and runtime images still run.
+	// chart images only. Runtime images are independent — see SkipRuntimeImages.
 	SkipImages bool `yaml:"skip_images,omitempty"`
 	// SkipRuntimeImages skips exporting (create) / importing (deploy) the
 	// user-selected runtime images. Charts and main images still run.

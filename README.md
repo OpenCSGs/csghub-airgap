@@ -117,7 +117,7 @@ sudo csghub-airgap create [options]
 4. **Per-chart processing** (each enabled chart):
    - Pull the Helm chart (unless `--skip charts`; if `--skip charts` but the chart file is missing locally, it is still pulled).
    - Export the chart's main images (unless `--skip image`).
-   - For the `csghub` chart: show the runtime image selection UI, then export the selected runtime images (unless `--skip runtime`/`--skip image` or `--quiet`).
+   - For the `csghub` chart: show the runtime image selection UI, then export the selected runtime images (unless `--skip runtime` or `--quiet`).
 5. **Generate `metadata.yaml`** recording the bundle configuration.
 6. **Pack** - pack the whole output directory into `<dirname>.tar` (unless `--skip tar`).
 
@@ -156,6 +156,9 @@ sudo csghub-airgap create --quiet
 
 # Skip runtime images entirely
 sudo csghub-airgap create --skip runtime
+
+# Export only runtime images (skip main chart images too)
+sudo csghub-airgap create --skip k3s,charts,package,tar,image
 
 # Image-only mode: skip k3s / charts / packages (shows the main image selection UI)
 sudo csghub-airgap create --skip k3s,charts,package
@@ -371,8 +374,8 @@ csghub-airgap list-images --category notebook --format json
 | :-------- | :------------------------------------------- | :-------------------------------------------- |
 | `k3s`     | Skip K3s download                            | Skip K3s install                              |
 | `charts`  | Skip chart pull (reuse existing files), still export main images | Skip chart install/upgrade, still import images |
-| `image`   | Skip all image export (main + runtime)       | Skip all image import (main + runtime)        |
-| `runtime` | Skip only runtime image export               | Skip only runtime image import                |
+| `image`   | Skip main chart image export                 | Skip main chart image import                  |
+| `runtime` | Skip runtime image export                    | Skip runtime image import                     |
 | `package` | Skip NVIDIA package download                 | Skip NVIDIA package install                   |
 | `tar`     | Skip packing: no `.tar`, keep the plain directory | Skip unpacking: `--input` must point at an already-unpacked directory |
 
@@ -384,7 +387,7 @@ csghub-airgap list-images --category notebook --format json
 | `longhorn` | Skip the longhorn chart                                            |
 | `nvdp`     | Skip the NVIDIA device plugin chart (and package operations)      |
 
-> `--skip image` also sets `SkipRuntimeImages`, i.e. runtime images are skipped together.
+> `--skip image` and `--skip runtime` are independent: `image` controls main chart images, `runtime` controls runtime images. Use both to skip all images.
 > Chart names not present in the bundle are ignored with a warning.
 
 **Image-only mode**: `--skip k3s,charts,package` (without `--skip image`) enters "export images only" mode and shows a main image selection UI per chart. Adding `--quiet` skips the UI and exports all main images directly.

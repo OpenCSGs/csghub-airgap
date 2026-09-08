@@ -117,7 +117,7 @@ sudo csghub-airgap create [options]
 4. **逐图表处理**（每个启用的图表）：
    - 拉取 Helm chart（除非 `--skip charts`；若 `--skip charts` 但本地缺 chart 文件，仍会补拉）。
    - 导出该图表的主镜像（除非 `--skip image`）。
-   - 若为 `csghub` 图表：弹出 runtime 镜像选择界面，确认后再导出选中的 runtime 镜像（除非 `--skip runtime`/`--skip image` 或 `--quiet`）。
+   - 若为 `csghub` 图表：弹出 runtime 镜像选择界面，确认后再导出选中的 runtime 镜像（除非 `--skip runtime` 或 `--quiet`）。
 5. **生成 `metadata.yaml`**，记录本次打包的配置。
 6. **打包**：把整个输出目录打成 `<目录名>.tar`（除非 `--skip tar`）。
 
@@ -156,6 +156,9 @@ sudo csghub-airgap create --quiet
 
 # 完全跳过 runtime 镜像
 sudo csghub-airgap create --skip runtime
+
+# 只导出 runtime 镜像（同时跳过主镜像）
+sudo csghub-airgap create --skip k3s,charts,package,tar,image
 
 # 只导出镜像，跳过 k3s / 图表 / 软件包（image-only 模式，会弹出主镜像选择界面）
 sudo csghub-airgap create --skip k3s,charts,package
@@ -369,8 +372,8 @@ csghub-airgap list-images --category notebook --format json
 | :-------- | :--------------------------------------------- | :------------------------------------------- |
 | `k3s`     | 跳过 K3s 下载                                  | 跳过 K3s 安装                                |
 | `charts`  | 跳过拉取图表（复用已有 chart 文件），仍导出主镜像 | 跳过图表安装/升级，仍导入镜像                |
-| `image`   | 跳过所有镜像导出（主镜像 + runtime 镜像）       | 跳过所有镜像导入（主镜像 + runtime 镜像）     |
-| `runtime` | 仅跳过 runtime 镜像导出                         | 仅跳过 runtime 镜像导入                       |
+| `image`   | 跳过主镜像导出                                | 跳过主镜像导入                                |
+| `runtime` | 跳过 runtime 镜像导出                         | 跳过 runtime 镜像导入                         |
 | `package` | 跳过 NVIDIA 软件包下载                          | 跳过 NVIDIA 软件包安装                        |
 | `tar`     | 跳过打包：不生成 `.tar`，保留纯目录             | 跳过解包：`--input` 需指向已解包的目录        |
 
@@ -382,7 +385,7 @@ csghub-airgap list-images --category notebook --format json
 | `longhorn`| 跳过 longhorn 图表                                                |
 | `nvdp`    | 跳过 NVIDIA 设备插件图表（并连带跳过软件包操作）                  |
 
-> `--skip image` 会同时设置 `SkipRuntimeImages`，即一并跳过 runtime 镜像。
+> `--skip image` 和 `--skip runtime` 相互独立：`image` 控制主镜像，`runtime` 控制 runtime 镜像。两者都加即可跳过全部镜像。
 > 传入了图表清单中不存在的名字会被忽略并给出警告。
 
 **image-only 模式**：`--skip k3s,charts,package`（且不 `--skip image`）会进入「只导出镜像」模式，为每个图表弹出主镜像选择界面。若同时加 `--quiet`，则跳过该选择界面，直接导出该图表全部主镜像。

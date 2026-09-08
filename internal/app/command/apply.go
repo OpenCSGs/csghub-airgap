@@ -38,7 +38,8 @@ type skipSet struct {
 //	k3s          skip k3s download/install
 //	charts       skip chart pull (reuse existing chart files) but still
 //	             export main images
-//	image        skip ALL image pull (main chart images and runtime images)
+//	image        skip the main chart images only (runtime images are
+//	             independent — use runtime to skip them)
 //	runtime      skip only the user-selected runtime images
 //	package      skip NVIDIA container toolkit package download/install
 //	tar          skip packing (create) / unpacking (deploy) the bundle tgz
@@ -70,7 +71,6 @@ func parseSkips(values []string) skipSet {
 			sk.Charts = true
 		case "image":
 			sk.Images = true
-			sk.RuntimeImages = true
 		case "runtime":
 			sk.RuntimeImages = true
 		case "package":
