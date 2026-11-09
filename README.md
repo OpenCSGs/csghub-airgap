@@ -1,5 +1,7 @@
 # CSGHub Airgap
 
+English | [简体中文](docs/README_cn.md)
+
 A CLI tool for creating and deploying offline bundles for CSGHub in air-gapped environments. Run `create` on a machine with internet access to build the bundle, then `deploy` on the offline machine. This tool runs as a command-line utility and does not require any runtime daemon or background service.
 
 ## Features
@@ -13,9 +15,15 @@ A CLI tool for creating and deploying offline bundles for CSGHub in air-gapped e
 - **List runtime images** with category and compute type filters
 - **No daemon** - Pure CLI tool that runs on demand
 
+## Documentation
+
+- [User Guide](USER_GUIDE.md) — command reference, bundle layout, and common workflows
+- [User Guide (简体中文)](docs/USER_GUIDE_cn.md)
+- [README (简体中文)](docs/README_cn.md)
+
 ## Prerequisites
 
-- Go 1.21 or higher (for building)
+- Go 1.25.7 or higher (for building)
 - Make (optional, for using Makefile)
 - Root/sudo access (for deployment and cleanup operations)
 

@@ -1,229 +1,243 @@
-# CSGHub Airgap 用户手册
+# CSGHub Airgap User Guide
 
-CSGHub Airgap 是一个用于离线环境下创建和部署 CSGHub 离线包的命令行工具。在有网的机器上用 `create` 打包，在离线的机器上用 `deploy` 部署。
+English | [简体中文](docs/USER_GUIDE_cn.md)
 
-```
+CSGHub Airgap is a command-line tool for creating and deploying CSGHub offline bundles in air-gapped environments. Run `create` on a machine with internet access to build the bundle, then run `deploy` on the offline machine to install CSGHub.
+
+```text
 csghub-airgap <command> [options]
 ```
 
-可用的命令：
+Available commands:
 
-| 命令           | 说明                            |
-| :------------- | :------------------------------ |
-| `create`       | 在有网机器上创建离线包（bundle） |
-| `deploy`       | 在离线机器上从离线包部署 CSGHub  |
-| `cleanup`      | 清理 K3s 及所有已部署服务        |
-| `list-images`  | 查询可用的 runtime 镜像列表      |
+| Command       | Description                                          |
+| :------------ | :--------------------------------------------------- |
+| `create`      | Create an offline bundle on an internet-connected machine |
+| `deploy`      | Deploy CSGHub from a bundle on an offline machine    |
+| `cleanup`     | Remove K3s and all deployed services                 |
+| `list-images` | List the available runtime images                    |
+
+## Contents
+
+- [create — Create a Bundle](#create--create-a-bundle)
+- [deploy — Deploy Offline](#deploy--deploy-offline)
+- [cleanup — Clean Up](#cleanup--clean-up)
+- [list-images — List Runtime Images](#list-images--list-runtime-images)
+- [The --skip Flag](#the---skip-flag)
+- [Common Workflows](#common-workflows)
+- [Post-Deployment Verification](#post-deployment-verification)
+- [FAQ](#faq)
+- [Notes](#notes)
 
 ---
 
-## create — 创建离线包
+## create — Create a Bundle
 
-在有网络的机器上执行，把所有需要的组件打包到输出目录。
+Run this on a machine with internet access. It packages every required component into the output directory.
 
 ```bash
 sudo csghub-airgap create [options]
 ```
 
-### 参数
+### Options
 
-| 参数             | 别名 | 说明                                                                   | 默认值                      |
-| :--------------- | :--- | :--------------------------------------------------------------------- | :-------------------------- |
-| `--output`       | `-o` | 离线包输出目录                                                          | `./csghub-airgap-<日期>`    |
-| `--arch`         |      | 目标架构（`amd64`、`arm64`），默认取本机架构                              | 当前系统架构                |
-| `--debug`        | `-d` | 开启调试日志                                                            | `false`                     |
-| `--proxy`        |      | 对 GitHub 下载使用 `ghfast.top` 代理前缀                                  | `false`                     |
-| `--force-pull`   |      | 跳过本地镜像缓存（containerd 缓存 + 文件缓存），始终从仓库重新拉取镜像       | `false`                     |
-| `--no-pkg-cache` |      | 跳过 NVIDIA 软件包缓存目录，始终重新下载 apt/dnf/zypper 软件包             | `false`                     |
-| `--k3s-env`      |      | 传给 K3s 的额外环境变量（`KEY=VALUE`，可多次）                            | `[]`                        |
-| `--k3s-arg`      |      | 传给 K3s 的额外启动参数（如 `--k3s-arg=--default-runtime=nvidia`）        | `[]`                        |
-| `--skip`         |      | 跳过组件：图表名（`csghub`、`longhorn`、`nvdp`）和/或类别（`k3s`、`charts`、`image`、`runtime`、`package`、`tar`），逗号分隔、可多次 |             |
-| `--quiet`        | `-q` | 跳过交互式提示；设置后 runtime 镜像选择被跳过（不选择任何 runtime 镜像）      | `false`                     |
-| `--dry-run`      |      | 只打印将要执行的操作（下载、镜像导出、打包等）而不真正执行                    | `false`                     |
-| `--set`          | `-s` | 设置 Helm values（如 `csghub.key=value`，可多次）                         | `[]`                        |
+| Option           | Alias | Description                                                                                                                     | Default                      |
+| :--------------- | :---- | :------------------------------------------------------------------------------------------------------------------------------ | :--------------------------- |
+| `--output`       | `-o`  | Bundle output directory                                                                                                         | `./csghub-airgap-<date>`     |
+| `--arch`         |       | Target architecture (`amd64`, `arm64`). Defaults to the host architecture                                                       | Current system architecture  |
+| `--debug`        | `-d`  | Enable debug logging                                                                                                            | `false`                      |
+| `--proxy`        |       | Prefix GitHub downloads with the `ghfast.top` proxy                                                                             | `false`                      |
+| `--force-pull`   |       | Ignore local image caches (containerd cache + file cache) and always pull from the registry                                      | `false`                      |
+| `--no-pkg-cache` |       | Ignore the NVIDIA package cache and always re-download apt/dnf/zypper packages                                                  | `false`                      |
+| `--k3s-env`      |       | Extra environment variables passed to K3s (`KEY=VALUE`, repeatable)                                                              | `[]`                         |
+| `--k3s-arg`      |       | Extra startup arguments passed to K3s (e.g. `--k3s-arg=--default-runtime=nvidia`)                                               | `[]`                         |
+| `--skip`         |       | Skip components: chart names (`csghub`, `longhorn`, `nvdp`) and/or kinds (`k3s`, `charts`, `image`, `runtime`, `package`, `tar`). Comma-separated, repeatable |                              |
+| `--quiet`        | `-q`  | Skip interactive prompts. Runtime image selection is skipped (no runtime images are selected)                                   | `false`                      |
+| `--dry-run`      |       | Print the actions to be performed (downloads, image export, packing, etc.) without executing them                               | `false`                      |
+| `--set`          | `-s`  | Set Helm values (e.g. `csghub.key=value`, repeatable)                                                                           | `[]`                         |
 
-### 执行流程
+### Execution Flow
 
-1. **架构检查**：确认当前平台可执行（macOS 上也可打包，见下方限制）。
-2. **NVIDIA 软件包下载**：仅当目标架构与本机一致、启用了 `nvdp` 图表且未 `--skip package` 时执行。
-3. **K3s 下载**：下载 k3s 二进制、airgap 镜像、安装脚本、helm 二进制（除非 `--skip k3s`）。
-4. **逐图表处理**（每个启用的图表）：
-   - 拉取 Helm chart（除非 `--skip charts`；若 `--skip charts` 但本地缺 chart 文件，仍会补拉）。
-   - 导出该图表的主镜像（除非 `--skip image`）。
-   - 若为 `csghub` 图表：弹出 runtime 镜像选择界面，确认后再导出选中的 runtime 镜像（除非 `--skip runtime` 或 `--quiet`）。
-5. **生成 `metadata.yaml`**，记录本次打包的配置。
-6. **打包**：把整个输出目录打成 `<目录名>.tar`（除非 `--skip tar`）。
+1. **Architecture check**: Verify the current platform can run the command (packing on macOS is supported; see Limitations below).
+2. **NVIDIA package download**: Only when the target architecture matches the host, the `nvdp` chart is enabled, and `--skip package` is not set.
+3. **K3s download**: Download the k3s binary, airgap images, install script, and helm binary (unless `--skip k3s`).
+4. **Per-chart processing** (for each enabled chart):
+   - Pull the Helm chart (unless `--skip charts`; if `--skip charts` is set but the chart file is missing locally, it is still pulled).
+   - Export the chart's main images (unless `--skip image`).
+   - For the `csghub` chart: show the runtime image selection UI, then export the selected runtime images (unless `--skip runtime` or `--quiet`).
+5. **Write `metadata.yaml`** with the configuration used for this bundle.
+6. **Pack**: Archive the entire output directory into `<dir>.tar` (unless `--skip tar`).
 
-> **runtime 镜像选择时机**：runtime 镜像的选择和导出在 csghub 主镜像导出完成之后进行，而不是程序启动时。
+> **When runtime images are selected**: runtime image selection and export happen after the main csghub images have been exported, not at program startup.
 
-### runtime 镜像选择界面
+### Runtime Image Selection UI
 
-在 csghub 主镜像导出后，程序会读取 csghub-server 的 runtime 镜像配置（默认从 GitHub 的 `main` 分支），并以 TUI 形式让你勾选：
+After the main csghub images are exported, the tool reads the runtime image configuration from csghub-server (by default from the `main` branch on GitHub) and presents a TUI:
 
-```
+```text
 Select runtime images (space=toggle, a=all, A=none, enter=confirm, empty=skip)
 ```
 
-- `空格` 切换当前项选中状态
-- `a` 全选
-- `A` 全不选
-- `回车` 确认（一个都不选 = 跳过，即不打包 runtime 镜像）
-- `q` / `Esc` 取消（同样跳过 runtime 镜像）
+- `Space` toggles the current item
+- `a` selects all
+- `A` clears the selection
+- `Enter` confirms (selecting nothing skips runtime images)
+- `q` / `Esc` cancels (also skips runtime images)
 
-### 示例
+### Examples
 
 ```bash
-# 基本打包（交互选择 runtime 镜像）
+# Basic bundle (interactive runtime image selection)
 sudo csghub-airgap create
 
-# 指定输出目录，并附带代理
+# Custom output directory with the proxy enabled
 sudo csghub-airgap create \
   --output /opt/csghub-bundle \
   --proxy
 
-# 打 arm64 架构的包
+# Build an arm64 bundle
 sudo csghub-airgap create --arch arm64
 
-# 不选择任何 runtime 镜像（无交互）
+# Skip runtime image selection entirely (non-interactive)
 sudo csghub-airgap create --quiet
 
-# 完全跳过 runtime 镜像（等效：仍会弹主镜像相关流程，但跳过 runtime 导出）
+# Skip runtime images (the main image flow still runs, runtime export is skipped)
 sudo csghub-airgap create --skip runtime
 
-# 只导出镜像，跳过 k3s / 图表 / 软件包（image-only 模式，会弹出主镜像选择界面）
+# Image-only mode: skip k3s / charts / packages (shows the main image selection UI)
 sudo csghub-airgap create --skip k3s,charts,package
 
-# 不打包成 tar，保留纯目录（配合部署时 --skip tar）
+# Keep the plain directory (no .tar), useful with deploy --skip tar
 sudo csghub-airgap create --skip tar
 
-# 跳过指定图表（csghub、longhorn、nvdp）
+# Skip specific charts (csghub, longhorn, nvdp)
 sudo csghub-airgap create --skip longhorn
 sudo csghub-airgap create --skip longhorn,nvdp
 
-# 强制重新拉取镜像（不使用本机缓存）
+# Force a fresh image pull (ignore local caches)
 sudo csghub-airgap create --force-pull
 
-# 自定义 Helm values 与 K3s 参数
+# Custom Helm values and K3s arguments
 sudo csghub-airgap create \
   --set csghub.global.gateway.external.domain=csghub.mycompany.com \
   --set longhorn.persistence.defaultClassReplicaCount=3 \
   --k3s-arg "--disable=servicelb"
 
-# 追加 K3s 环境变量
+# Extra K3s environment variables
 sudo csghub-airgap create \
   --k3s-env "K3S_NODE_NAME=server01" \
   --k3s-env "K3S_TOKEN=mysecrettoken"
 ```
 
-### 离线包目录结构
+### Bundle Directory Structure
 
-`create` 完成后，除下面的目录外，还会在**同级**生成 `csghub-airgap-<日期>.tar`，即整个目录的打包文件，方便拷贝传输。`deploy` 时可直接把 `--input` 指向该文件，会自动解包；或指向已解包的目录（配合 `--skip tar`）。
+After `create` finishes, a sibling `csghub-airgap-<date>.tar` is produced containing the whole directory, making it easy to copy. For `deploy`, point `--input` at the archive (it is unpacked automatically) or at an already-unpacked directory (with `--skip tar`).
 
-```
-csghub-airgap-<日期>/
-├── metadata.yaml                  # 打包配置（部署时自动应用）
+```text
+csghub-airgap-<date>/
+├── metadata.yaml                  # Bundle configuration (applied automatically on deploy)
 ├── k3s/
 │   ├── bin/k3s
 │   ├── images/k3s-airgap-images-<arch>.tar.zst
 │   ├── scripts/k3s-install.sh
 │   ├── scripts/k3s-patch.sh
 │   └── helm/helm-v3.20.1-linux-<arch>.tar.gz
-├── packages/                      # NVIDIA container toolkit 软件包（Linux 上才有）
+├── packages/                      # NVIDIA container toolkit packages (Linux only)
 ├── csghub/
-│   ├── charts/csghub-<版本>.tgz
-│   └── images/csghub-<版本>.tar
-├── csghub-runtime/                # 仅当选中了 runtime 镜像时生成
-│   └── images/csghub-runtime-<版本>.tar
+│   ├── charts/csghub-<version>.tgz
+│   └── images/csghub-<version>.tar
+├── csghub-runtime/                # Only created when runtime images are selected
+│   └── images/csghub-runtime-<version>.tar
 ├── longhorn/
-│   ├── charts/longhorn-<版本>.tgz
-│   └── images/longhorn-<版本>.tar
+│   ├── charts/longhorn-<version>.tgz
+│   └── images/longhorn-<version>.tar
 └── nvidia-device-plugin/
-    ├── charts/nvidia-device-plugin-<版本>.tgz
-    └── images/nvidia-device-plugin-<版本>.tar
+    ├── charts/nvidia-device-plugin-<version>.tgz
+    └── images/nvidia-device-plugin-<version>.tar
 ```
 
-### 限制
+### Limitations
 
-- **跨架构打包**：目标架构与本机不一致时，不会下载 NVIDIA 软件包（需在 Linux 机器上手动下载，如 `apt/dnf/zypper install nvidia-container-toolkit=...`）。
-- **macOS 上打包**：支持，但 NVIDIA 软件包无法在非 Linux 机器上下载，需手动处理。
-- **`--flannel-iface`**：默认取自打包机器（macOS 上可能是 `en0`）；部署时若未用 `--k3s-arg` 覆盖，会自动替换为目标机器的默认网卡。
+- **Cross-architecture packing**: When the target architecture differs from the host, NVIDIA packages are not downloaded. Download them manually on a Linux machine (e.g. `apt/dnf/zypper install nvidia-container-toolkit=...`).
+- **Packing on macOS**: Supported, but NVIDIA packages cannot be downloaded on a non-Linux host and must be handled manually.
+- **`--flannel-iface`**: Defaults to the interface on the packing machine (possibly `en0` on macOS). At deploy time, if it is not overridden with `--k3s-arg`, it is replaced with the target machine's default interface.
 
 ---
 
-## deploy — 离线部署
+## deploy — Deploy Offline
 
-在离线机器上，从离线包部署 CSGHub。
+Deploy CSGHub from a bundle on the offline machine.
 
 ```bash
 sudo csghub-airgap deploy [options]
 ```
 
-需要 root 权限。
+Root privileges are required.
 
-### 参数
+### Options
 
-| 参数                | 别名 | 说明                                                               | 默认值                   |
-| :------------------ | :--- | :----------------------------------------------------------------- | :----------------------- |
-| `--input`           | `-i` | 离线包所在目录                                                       | `./csghub-airgap-<日期>` |
-| `--debug`           | `-d` | 开启调试日志                                                        | `false`                  |
-| `--proxy`           |      | 对 GitHub 下载使用 `ghfast.top` 代理前缀                              | `false`                  |
-| `--k3s-env`         |      | 传给 K3s 的额外环境变量（`KEY=VALUE`，可多次）                        | `[]`                     |
-| `--k3s-arg`         |      | 传给 K3s 的额外启动参数                                              | `[]`                     |
-| `--data`            | `-D` | K3s 与 Longhorn 的数据目录                                            | 系统默认                 |
-| `--domain`          |      | CSGHub 访问域名                                                      | `csghub.example.com`     |
-| `--quiet`           | `-q` | 跳过交互式提示；设置后 multipathd 被自动停止并禁用（不再询问）           | `false`                  |
-| `--dry-run`         |      | 只打印将要执行的操作（含 k3s 安装命令、图表安装等）而不真正执行           | `false`                  |
-| `--skip`            |      | 同 `create`：`k3s`、`charts`、`image`、`runtime`、`package`、`tar` 及图表名    |                          |
-| `--set`             | `-s` | 设置 Helm values（如 `csghub.key=value`，可多次）                     | `[]`                     |
+| Option          | Alias | Description                                                                                              | Default                      |
+| :-------------- | :---- | :------------------------------------------------------------------------------------------------------- | :--------------------------- |
+| `--input`       | `-i`  | Bundle directory                                                                                         | `./csghub-airgap-<date>`     |
+| `--debug`       | `-d`  | Enable debug logging                                                                                     | `false`                      |
+| `--proxy`       |       | Prefix GitHub downloads with the `ghfast.top` proxy                                                      | `false`                      |
+| `--k3s-env`     |       | Extra environment variables passed to K3s (`KEY=VALUE`, repeatable)                                      | `[]`                         |
+| `--k3s-arg`     |       | Extra startup arguments passed to K3s                                                                    | `[]`                         |
+| `--data`        | `-D`  | Data directory for K3s and Longhorn                                                                      | System default               |
+| `--domain`      |       | CSGHub access domain                                                                                     | `csghub.example.com`         |
+| `--quiet`       | `-q`  | Skip interactive prompts. multipathd is stopped and disabled automatically without asking                | `false`                      |
+| `--dry-run`     |       | Print the actions to be performed (K3s install commands, chart installs, etc.) without executing them     | `false`                      |
+| `--skip`        |       | Same as `create`: `k3s`, `charts`, `image`, `runtime`, `package`, `tar`, plus chart names                |                              |
+| `--set`         | `-s`  | Set Helm values (e.g. `csghub.key=value`, repeatable)                                                    | `[]`                         |
 
-### 执行流程与预检
+### Execution Flow and Preflight
 
-1. **系统检查**：必须是 Linux；离线包架构必须与目标机器一致，否则直接失败。
-2. **NVIDIA GPU 检测**：本机无 NVIDIA GPU 时，自动禁用 `nvdp` 图表（及对应的软件包安装）。
-3. **NVIDIA 软件包安装**：启用 `nvdp` 且未 `--skip package` 时安装。
-4. **内核参数设置**：写入所需 sysctl 参数（`--skip k3s` 使用自有集群时不设置）。
-5. **K3s 安装**：安装 k3s（除非 `--skip k3s`）。
-6. **multipathd 预检**：检测到 `multipathd` 运行时，提示是否停止并禁用（`--quiet` 下自动执行）。Longhorn 与 multipath 冲突可能导致 PVC 挂载卡住。
-7. **逐图表部署**（每个启用的图表）：
-   - 导入主镜像到 containerd（除非 `--skip image`）。
-   - 对 `csghub` 图表：导入 runtime 镜像（除非 `--skip runtime`；仅当打包时选中了 runtime 镜像才导入）。
-   - 安装或升级图表（除非 `--skip charts`）。
-8. **K3s 配置修补**：应用域名等配置（写入 `/etc/hosts` 并修补集群 CoreDNS）。当未由本工具安装 k3s（`--skip k3s`，使用自有集群）时，会先询问是否执行；`--quiet` 下默认执行，不询问。
+1. **System check**: Must be Linux; the bundle architecture must match the target machine, otherwise the command fails immediately.
+2. **NVIDIA GPU detection**: If no NVIDIA GPU is present, the `nvdp` chart (and its package installation) is disabled automatically.
+3. **NVIDIA package installation**: Installed when `nvdp` is enabled and `--skip package` is not set.
+4. **Kernel parameters**: Write the required sysctl settings (skipped when `--skip k3s` is used with an external cluster).
+5. **K3s installation**: Install k3s (unless `--skip k3s`).
+6. **multipathd preflight**: If `multipathd` is running, prompt whether to stop and disable it (`--quiet` performs this automatically). Longhorn can conflict with multipath and cause PVC mounts to hang.
+7. **Per-chart deployment** (for each enabled chart):
+   - Import the main images into containerd (unless `--skip image`).
+   - For the `csghub` chart: import runtime images (unless `--skip runtime`; only images selected during packing are imported).
+   - Install or upgrade the chart (unless `--skip charts`).
+8. **K3s configuration patch**: Apply domain and related settings (write `/etc/hosts` and patch the cluster CoreDNS). When k3s was not installed by this tool (`--skip k3s`, external cluster), the tool asks before applying; with `--quiet` it applies without asking.
 
-### 示例
+### Examples
 
 ```bash
-# 基本部署
+# Basic deployment
 sudo csghub-airgap deploy --input /opt/csghub-bundle
 
-# 指定域名与数据目录
+# Custom domain and data directory
 sudo csghub-airgap deploy \
   --input /opt/csghub-bundle \
   --domain csghub.mycompany.com \
   --data /mnt/data
 
-# 静默部署（自动禁用 multipathd，不交互）
+# Non-interactive deploy (auto-disables multipathd)
 sudo csghub-airgap deploy --input /opt/csghub-bundle --quiet
 
-# 跳过 K3s 安装（仅导入镜像并安装图表）
+# Skip K3s installation (only import images and install charts)
 sudo csghub-airgap deploy --input /opt/csghub-bundle --skip k3s
 
-# 跳过全部镜像导入（镜像已通过其他方式载入）
+# Skip all image imports (images already loaded another way)
 sudo csghub-airgap deploy --input /opt/csghub-bundle --skip image
 
-# 跳过 runtime 镜像导入
+# Skip runtime image imports
 sudo csghub-airgap deploy --input /opt/csghub-bundle --skip runtime
 
-# 跳过指定图表
+# Skip specific charts
 sudo csghub-airgap deploy --input /opt/csghub-bundle --skip longhorn
 sudo csghub-airgap deploy --input /opt/csghub-bundle --skip nvdp
 
-# 部署时覆盖 Helm values
+# Override Helm values at deploy time
 sudo csghub-airgap deploy \
   --input /opt/csghub-bundle \
   --set csghub.global.persistence.size=200Gi
 
-# 追加 K3s 启动参数与环境变量
+# Extra K3s arguments and environment variables
 sudo csghub-airgap deploy \
   --input /opt/csghub-bundle \
   --k3s-arg "--default-runtime=nvidia" \
@@ -232,165 +246,165 @@ sudo csghub-airgap deploy \
 
 ---
 
-## cleanup — 清理
+## cleanup — Clean Up
 
-卸载 K3s 并清理所有已部署服务。
+Uninstall K3s and remove all deployed services.
 
 ```bash
 sudo csghub-airgap cleanup [options]
 ```
 
-| 参数    | 别名 | 说明                   | 默认值  |
-| :------ | :--- | :--------------------- | :------ |
-| `--yes` | `-y` | 跳过确认，直接执行清理  | `false` |
+| Option  | Alias | Description                        | Default |
+| :------ | :---- | :--------------------------------- | :------ |
+| `--yes` | `-y`  | Skip confirmation and clean up now | `false` |
 
 ```bash
-# 交互式清理（有确认提示 + 10 秒倒计时缓冲，Ctrl+C 可取消）
+# Interactive cleanup (confirmation prompt + 10-second countdown, Ctrl+C to abort)
 sudo csghub-airgap cleanup
 
-# 直接清理，不询问
+# Clean up without confirmation
 sudo csghub-airgap cleanup --yes
 ```
 
-> ⚠️ **注意**：cleanup 会删除**整台机器的 k3s 及其所有数据**（不只是 CSGHub 资源），包括 `/var/lib/rancher/k3s`（PVC、Longhorn 数据）、`/var/lib/kubelet`、k3s 二进制与 systemd 服务。**若该机器上的 k3s 是你自己安装的（而非本工具部署），也会一并删除**，请务必确认。
+> **Warning**: `cleanup` removes the **entire machine's k3s installation and all its data** (not just CSGHub resources), including `/var/lib/rancher/k3s` (PVCs and Longhorn data), `/var/lib/kubelet`, the k3s binary, and the systemd service. **If k3s on this machine was installed by you rather than by this tool, it will be removed as well.** Double-check before proceeding.
 >
-> 交互式模式下需输入 `yes` 确认，确认后有 10 秒倒计时缓冲（`Ctrl+C` 可取消）。
-> 实质是执行 `/usr/local/bin/k3s-uninstall.sh`。若失败可手动执行该脚本。
+> Interactive mode requires typing `yes` to confirm, followed by a 10-second countdown (`Ctrl+C` aborts).
+> It runs `/usr/local/bin/k3s-uninstall.sh`; if that fails, run the script manually.
 
 ---
 
-## list-images — 查询 runtime 镜像
+## list-images — List Runtime Images
 
-在打包前查看 csghub-server 提供的 runtime 镜像。无需 root。
+Inspect the runtime images provided by csghub-server before building a bundle. No root required.
 
 ```bash
 csghub-airgap list-images [options]
 ```
 
-### 参数
+### Options
 
-| 参数           | 别名 | 说明                                                             | 默认值   |
-| :------------- | :--- | :--------------------------------------------------------------- | :------- |
-| `--source`     |      | 配置来源：`github`（在线）、`local`（本地目录，用于离线场景）        | `github` |
-| `--version`    | `-v` | csghub-server 的 Git 分支或 tag（如 `main`、`v1.2.0`）             | `main`   |
-| `--local-path` |      | 本地含 csghub-server 配置的目录（配合 `--source local` 使用）        | `.`      |
-| `--category`   | `-c` | 按类别过滤（可多次）：`evaluation`、`finetune`、`inference`、`job`、`notebook`、`space` | 全部 |
-| `--compute`    |      | 按计算类型过滤（逗号分隔）：`cpu`、`gpu`、`dcu`                    | 全部     |
-| `--proxy`      |      | 对 GitHub 下载使用 `ghfast.top` 代理前缀                           | `false`  |
-| `--format`     | `-f` | 输出格式：`table`、`json`                                         | `table`  |
+| Option         | Alias | Description                                                                                       | Default  |
+| :------------- | :---- | :------------------------------------------------------------------------------------------------ | :------- |
+| `--source`     |       | Configuration source: `github` (online) or `local` (local directory, for air-gapped use)          | `github` |
+| `--version`    | `-v`  | csghub-server Git branch or tag (e.g. `main`, `v1.2.0`)                                           | `main`   |
+| `--local-path` |       | Local directory containing csghub-server configuration (with `--source local`)                     | `.`      |
+| `--category`   | `-c`  | Filter by category (repeatable): `evaluation`, `finetune`, `inference`, `job`, `notebook`, `space` | All      |
+| `--compute`    |       | Filter by compute type (comma-separated): `cpu`, `gpu`, `dcu`                                     | All      |
+| `--proxy`      |       | Prefix GitHub downloads with the `ghfast.top` proxy                                               | `false`  |
+| `--format`     | `-f`  | Output format: `table` or `json`                                                                  | `table`  |
 
-### 示例
+### Examples
 
 ```bash
-# 列出全部 runtime 镜像（从 GitHub 拉取配置）
+# List all runtime images (configuration fetched from GitHub)
 csghub-airgap list-images
 
-# 只列 inference 类别
+# List inference images only
 csghub-airgap list-images --category inference
 
-# 多类别过滤
+# Multiple categories
 csghub-airgap list-images --category finetune --category inference
 
-# 按计算类型过滤
+# Filter by compute type
 csghub-airgap list-images --compute gpu
 csghub-airgap list-images --compute cpu,dcu
 
-# 指定 csghub-server 版本
+# Target a specific csghub-server version
 csghub-airgap list-images --version v1.2.0
 
-# 使用 ghfast.top 代理
+# Use the ghfast.top proxy
 csghub-airgap list-images --proxy
 
-# 从本地配置目录读取（离线场景）
+# Read from a local configuration directory (air-gapped)
 csghub-airgap list-images \
   --source local \
   --local-path /path/to/csghub-server \
   --category inference
 
-# JSON 输出，便于脚本处理
+# JSON output for scripting
 csghub-airgap list-images --category notebook --format json
 ```
 
 ---
 
-## --skip 详解
+## The --skip Flag
 
-`--skip` 接受逗号分隔、可多次指定的值（大小写不敏感）。取值分两类：
+`--skip` accepts comma-separated, repeatable values (case-insensitive). There are two kinds of values.
 
-**类别（coarse-grained）**
+**Kinds (coarse-grained)**
 
-| 值        | create 行为                                   | deploy 行为                                  |
-| :-------- | :--------------------------------------------- | :------------------------------------------- |
-| `k3s`     | 跳过 K3s 下载                                  | 跳过 K3s 安装                                |
-| `charts`  | 跳过拉取图表（复用已有 chart 文件），仍导出主镜像 | 跳过图表安装/升级，仍导入镜像                |
-| `image`   | 跳过主镜像导出                                | 跳过主镜像导入                                |
-| `runtime` | 跳过 runtime 镜像导出                         | 跳过 runtime 镜像导入                         |
-| `package` | 跳过 NVIDIA 软件包下载                          | 跳过 NVIDIA 软件包安装                       |
-| `tar`     | 跳过打包：不生成 `.tar`，保留纯目录            | 跳过解包：`--input` 需指向已解包的目录         |
+| Value     | create behavior                                                  | deploy behavior                                                    |
+| :-------- | :--------------------------------------------------------------- | :----------------------------------------------------------------- |
+| `k3s`     | Skip the K3s download                                            | Skip the K3s install                                               |
+| `charts`  | Skip chart pulls (reuse existing chart files), still export main images | Skip chart install/upgrade, still import images              |
+| `image`   | Skip main image export                                           | Skip main image import                                             |
+| `runtime` | Skip runtime image export                                        | Skip runtime image import                                          |
+| `package` | Skip NVIDIA package download                                     | Skip NVIDIA package install                                        |
+| `tar`     | Skip packing: no `.tar`, keep the plain directory                | Skip unpacking: `--input` must point at an already-unpacked directory |
 
-**图表名**
+**Chart names**
 
-| 值        | 说明                                                              |
-| :-------- | :---------------------------------------------------------------- |
-| `csghub`  | 跳过 csghub 图表（拉取、其镜像、runtime 镜像）                       |
-| `longhorn`| 跳过 longhorn 图表                                                 |
-| `nvdp`    | 跳过 NVIDIA 设备插件图表（并连带跳过软件包操作）                     |
+| Value      | Description                                                            |
+| :--------- | :--------------------------------------------------------------------- |
+| `csghub`   | Skip the csghub chart (pull, its images, and runtime images)           |
+| `longhorn` | Skip the longhorn chart                                                |
+| `nvdp`     | Skip the NVIDIA device plugin chart (and its package operations)       |
 
-> `--skip image` 和 `--skip runtime` 相互独立：`image` 控制主镜像，`runtime` 控制 runtime 镜像。两者都加即可跳过全部镜像。
-> 传入了图表清单中不存在的名字会被忽略并给出警告。
+> `--skip image` and `--skip runtime` are independent: `image` controls main images, `runtime` controls runtime images. Use both to skip all images.
+> Chart names that are not present in the bundle are ignored with a warning.
 
-**image-only 模式**：`--skip k3s,charts,package`（且不 `--skip image`）会进入「只导出镜像」模式，为每个图表弹出主镜像选择界面。若同时加 `--quiet`，则跳过该选择界面，直接导出该图表全部主镜像。
+**Image-only mode**: `--skip k3s,charts,package` (without `--skip image`) enters "export images only" mode and shows a main image selection UI for each chart. Adding `--quiet` skips that UI and exports all main images directly.
 
 ```bash
-# 只导出镜像，并跳过主镜像选择（导出全部主镜像）
+# Export only images, skipping the main image selection (export all main images)
 sudo csghub-airgap create --skip k3s,charts,package --quiet
 
-# 只导出 runtime 镜像（跳过主镜像）
+# Export only runtime images (skip main images)
 sudo csghub-airgap create --skip k3s,charts,package,tar,image
 ```
 
 ---
 
-## 典型工作流
+## Common Workflows
 
-### 场景一：基本离线部署
+### Scenario 1: Basic Air-Gap Deployment
 
 ```bash
-# 1) 有网机器上打包（生成 /opt/csghub-bundle.tar）
+# 1) Build the bundle on the internet-connected machine (produces /opt/csghub-bundle.tar)
 sudo csghub-airgap create --output /opt/csghub-bundle
 
-# 2) 拷贝打包文件到离线机器（U 盘 / scp 等）
+# 2) Copy the archive to the air-gapped machine (USB, scp, etc.)
 scp /opt/csghub-bundle.tar user@airgap-host:/root/
 
-# 3) 离线机器上部署（自动解包）
+# 3) Deploy on the air-gapped machine (unpacked automatically)
 sudo csghub-airgap deploy \
   --input /opt/csghub-bundle.tar \
   --domain csghub.internal.company.com
 ```
 
-### 场景二：GPU 环境
+### Scenario 2: GPU Environment
 
 ```bash
-# 打包（包含 nvdp 与 NVIDIA 软件包）
+# Build the bundle (includes nvdp and NVIDIA packages)
 sudo csghub-airgap create --output /opt/csghub-gpu
 
-# 部署（本机检测到 GPU 时自动安装 nvdp；无 GPU 时自动禁用）
+# Deploy (nvdp is installed automatically when a GPU is detected; disabled otherwise)
 sudo csghub-airgap deploy \
   --input /opt/csghub-gpu \
   --domain csghub.gpu.company.com
 ```
 
-### 场景三：仅导出/导入镜像（复用已有 K3s）
+### Scenario 3: Export/Import Images Only (Reuse Existing K3s)
 
 ```bash
-# 打包机器
+# On the bundle machine
 sudo csghub-airgap create --output /opt/csghub-img --skip k3s,charts,package
 
-# 目标机器（已有 K3s，只导入镜像）
+# On the target machine (K3s already installed, import images only)
 sudo csghub-airgap deploy --input /opt/csghub-img --skip k3s,charts
 ```
 
-### 场景四：重新部署
+### Scenario 4: Redeploy
 
 ```bash
 sudo csghub-airgap cleanup --yes
@@ -399,34 +413,34 @@ sudo csghub-airgap deploy --input /opt/csghub-bundle --domain csghub.company.com
 
 ---
 
-## 部署后验证
+## Post-Deployment Verification
 
 ```bash
-# 查看 CSGHub 相关 Pod 是否就绪
+# Check whether the CSGHub pods are ready
 kubectl get pods -n csghub
 
-# 查看命名空间
+# List namespaces
 kubectl get ns
 ```
 
 ---
 
-## 常见问题
+## FAQ
 
-| 现象                    | 处理                                                                 |
-| :---------------------- | :------------------------------------------------------------------- |
-| `permission denied`     | 用 `sudo` 运行（deploy / cleanup 必须 root）                          |
-| `architecture mismatch` | 用与目标机器一致的 `--arch` 重新打包                                   |
-| 镜像缓存旧               | 重新打包时加 `--force-pull`，强制从仓库拉取                            |
-| 想跳过 runtime 交互      | 打包时加 `--skip runtime` 或 `--quiet`                                 |
-| 想复用已有 chart 文件    | `--skip charts`（缺文件时会自动补拉）                                  |
-| 网络访问 GitHub 受限     | 加 `--proxy`；或对 `list-images` 用 `--source local` 指向本地配置目录    |
+| Symptom                          | Resolution                                                                       |
+| :------------------------------- | :------------------------------------------------------------------------------- |
+| `permission denied`              | Run with `sudo` (`deploy` / `cleanup` require root)                              |
+| `architecture mismatch`          | Re-create the bundle with `--arch` matching the target machine                   |
+| Stale image cache                | Re-create with `--force-pull` to pull fresh images                               |
+| Want to skip runtime interaction | Add `--skip runtime` or `--quiet` when creating the bundle                       |
+| Want to reuse existing charts    | Use `--skip charts` (missing files are pulled automatically)                     |
+| GitHub access is restricted      | Add `--proxy`; or use `list-images --source local` with a local configuration directory |
 
 ---
 
-## 说明
+## Notes
 
-- 部署与清理需要 root 权限；`create` 在 Linux 上若需下载 NVIDIA 软件包也需要 root。
-- 打包配置保存在离线包的 `metadata.yaml` 中，部署时自动应用；命令行参数（`--set`、`--k3s-arg`、`--skip` 等）可在部署时覆盖。
-- **镜像文件缓存**：`create` 拉取的镜像会缓存在用户缓存目录（Linux/macOS 为 `~/.cache/csghub-airgap/images`），以镜像引用命名。这样在打包中断后重试时，已拉取的镜像直接复用，不必全部重新下载。缓存位于离线包之外，不会被一起传输。需要强制刷新时用 `--force-pull`。
-- 本工具不运行任何后台守护进程。
+- Deployment and cleanup require root privileges; on Linux, `create` also requires root when downloading NVIDIA packages.
+- The bundle configuration is stored in `metadata.yaml` inside the bundle and applied automatically on deploy. Command-line flags (`--set`, `--k3s-arg`, `--skip`, etc.) can override it at deploy time.
+- **Image file cache**: Images pulled by `create` are cached in the user cache directory (`~/.cache/csghub-airgap/images` on Linux/macOS), keyed by image reference. If packing is interrupted and retried, already-pulled images are reused instead of downloaded again. The cache lives outside the bundle and is not transferred. Use `--force-pull` to refresh it.
+- This tool does not run any background daemons.

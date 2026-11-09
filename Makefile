@@ -27,14 +27,14 @@ OUTPUT_DIR := build
 # Main entry file
 ENTRY_FILE := cmd/csghub/airgap.go
 
-# 是否用 UPX 压缩产物(大幅减小二进制体积,如 90MB -> 30MB)。设为空禁用。
-# 依赖 upx 命令(brew install upx / apt install upx / apk add upx)。
-# 注意:UPX 5.x 移除了对 macOS Mach-O 的支持,只有 UPX 4.x 能压缩 darwin 产物。
-# 在 macOS 本机如需压缩 darwin 二进制,请安装 UPX 4.x:brew install upx@4(或 brew install upx && brew link --overwrite upx@4)。
+# Compress artifacts with UPX (significantly reduces binary size, e.g. 90MB -> 30MB). Set to empty to disable.
+# Requires the upx command (brew install upx / apt install upx / apk add upx).
+# Note: UPX 5.x dropped support for macOS Mach-O; only UPX 4.x can compress darwin artifacts.
+# On macOS, install UPX 4.x to compress darwin binaries: brew install upx@4 (or brew install upx && brew link --overwrite upx@4).
 UPX      ?= upx
 UPXFLAGS ?= --best
 
-# 条件压缩:仅当 UPX 可用时执行;找不到 upx、格式不支持或文件已压缩(AlreadyPacked)时跳过
+# Conditional compression: runs only when UPX is available; skipped if upx is missing, the format is unsupported, or the file is already packed (AlreadyPacked).
 define MAYBE_UPX
 	@if command -v $(UPX) >/dev/null 2>&1; then \
 		echo "==> upx compressing $(1)"; \
